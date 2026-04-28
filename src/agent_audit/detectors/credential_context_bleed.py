@@ -263,12 +263,16 @@ class CredentialContextBleed(Rule):
                     confidence=Confidence.HIGH,
                     summary=(
                         f"Agent {summary_piece}. "
-                        f"{'A destructive operation followed in the same window — '
-                          'this is the pattern that caused the April 2026 Claude '
-                          'Code incident where 25k documents were deleted from '
-                          'the wrong GCP project. ' if destructive_follows else ''}"
-                        f"Check whether the agent's credential scope matched "
-                        f"the user's intent."
+                        + (
+                            "A destructive operation followed in the same window — "
+                            "this is the pattern that caused the April 2026 Claude "
+                            "Code incident where 25k documents were deleted from "
+                            "the wrong GCP project. "
+                            if destructive_follows
+                            else ""
+                        )
+                        + "Check whether the agent's credential scope matched "
+                        + "the user's intent."
                     ),
                     evidence=[
                         Evidence(

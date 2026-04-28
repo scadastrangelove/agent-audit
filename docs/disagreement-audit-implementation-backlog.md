@@ -14,9 +14,9 @@ This document converts the trio disagreement audit into an implementation
 backlog for `agent-audit`.
 
 Source audit artifacts:
-- `/Users/serg/Documents/ASAMM/audits/trio-analysis-2026-04-27/product-impact-from-disagreement-audit.md`
-- `/Users/serg/Documents/ASAMM/audits/trio-analysis-2026-04-27/non-unanimous-deep-assessment.md`
-- `/Users/serg/Documents/ASAMM/audits/trio-analysis-2026-04-27/trio-analysis.md`
+- `audits/trio-analysis-2026-04-27/product-impact-from-disagreement-audit.md`
+- `audits/trio-analysis-2026-04-27/non-unanimous-deep-assessment.md`
+- `audits/trio-analysis-2026-04-27/trio-analysis.md`
 
 The goal is not to "make reviewers agree." The goal is to tighten the
 product boundary where disagreement revealed one of four concrete problems:
@@ -68,15 +68,15 @@ Problem:
   report lanes as repo/file-backed findings.
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/collection_scale.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/finding_dedup.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/project_report.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/cli.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/corpus_lab.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_collection_scale.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_finding_dedup.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_project_report.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_corpus_lab.py`
+- `src/agent_audit/collection_scale.py`
+- `src/agent_audit/finding_dedup.py`
+- `src/agent_audit/project_report.py`
+- `src/agent_audit/cli.py`
+- `src/agent_audit/corpus_lab.py`
+- `tests/test_collection_scale.py`
+- `tests/test_finding_dedup.py`
+- `tests/test_project_report.py`
+- `tests/test_corpus_lab.py`
 
 Tasks:
 - Introduce a distinct output kind for collection-wide signals:
@@ -114,10 +114,10 @@ Problem:
   - aggregate-only evidence
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/finding_dedup.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/project_report.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_project_report.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_finding_dedup.py`
+- `src/agent_audit/finding_dedup.py`
+- `src/agent_audit/project_report.py`
+- `tests/test_project_report.py`
+- `tests/test_finding_dedup.py`
 
 Tasks:
 - Add machine-readable fields:
@@ -151,11 +151,11 @@ Problem:
   request flow.
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/knowledge/rule_packs/external/aguara/ssrf-cloud/SSRF_004-aws-imds-token-request.yaml`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/knowledge/rule_pack_overrides.yaml`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/project_report.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_rule_surface_classifier.py`
-- add targeted regression test under `/Users/serg/Documents/ASAMM/agent-audit/tests/`
+- `src/agent_audit/knowledge/rule_packs/external/aguara/ssrf-cloud/SSRF_004-aws-imds-token-request.yaml`
+- `src/agent_audit/knowledge/rule_pack_overrides.yaml`
+- `src/agent_audit/project_report.py`
+- `tests/test_rule_surface_classifier.py`
+- add targeted regression test under `tests/`
 
 Tasks:
 - Tighten the IMDS rule so `imdsv2_token_request` requires actual token-flow
@@ -185,11 +185,11 @@ Problem:
   - capability expansion via config or tool registration
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/detectors/no_approval_model.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/finding_dedup.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/docs/architecture.md`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_native_regression_fixtures.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_finding_dedup.py`
+- `src/agent_audit/detectors/no_approval_model.py`
+- `src/agent_audit/finding_dedup.py`
+- `src/agent_audit/docs/architecture.md`
+- `tests/test_native_regression_fixtures.py`
+- `tests/test_finding_dedup.py`
 
 Tasks:
 - Keep the current detector as a recall layer if necessary, but emit
@@ -219,12 +219,12 @@ Problem:
   operationalizing them.
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/detectors/no_approval_model.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/knowledge/markdown_features.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/knowledge/capability_lexicon.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/knowledge/rule_pack_overrides.yaml`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_native_regression_fixtures.py`
-- add dedicated suppressor tests under `/Users/serg/Documents/ASAMM/agent-audit/tests/`
+- `src/agent_audit/detectors/no_approval_model.py`
+- `src/agent_audit/knowledge/markdown_features.py`
+- `src/agent_audit/knowledge/capability_lexicon.py`
+- `src/agent_audit/knowledge/rule_pack_overrides.yaml`
+- `tests/test_native_regression_fixtures.py`
+- add dedicated suppressor tests under `tests/`
 
 Tasks:
 - Add documentary/setup scoring or suppressor features for:
@@ -259,12 +259,12 @@ Problem:
   equivalent for static instruction/config artifacts.
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/detectors/mcp_config_mutation.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/detectors/no_approval_model.py`
+- `src/agent_audit/detectors/mcp_config_mutation.py`
+- `src/agent_audit/detectors/no_approval_model.py`
 - or new file:
-  `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/detectors/config_surface_expansion.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/project_scanner.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_mcp_config_mutation.py`
+  `src/agent_audit/detectors/config_surface_expansion.py`
+- `src/agent_audit/project_scanner.py`
+- `tests/test_mcp_config_mutation.py`
 - add project-scan regression tests
 
 Tasks:
@@ -296,12 +296,12 @@ Problem:
   collections, creating repeated disputes and overstating prevalence.
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/finding_dedup.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/collection_scale.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/corpus_lab.py`
+- `src/agent_audit/finding_dedup.py`
+- `src/agent_audit/collection_scale.py`
+- `src/agent_audit/corpus_lab.py`
 - add new helper if needed, for example:
-  `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/family_fingerprint.py`
-- add regression tests under `/Users/serg/Documents/ASAMM/agent-audit/tests/`
+  `src/agent_audit/family_fingerprint.py`
+- add regression tests under `tests/`
 
 Tasks:
 - fingerprint near-duplicate skill/instruction families
@@ -320,11 +320,11 @@ Problem:
 - Those cases should become permanent regression fixtures, not only a memo.
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_native_regression_fixtures.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_project_report.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/tests/test_collection_scale.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/benchmarks/incident-corpus/`
-- optionally new corpus notes under `/Users/serg/Documents/ASAMM/agent-audit/docs/`
+- `tests/test_native_regression_fixtures.py`
+- `tests/test_project_report.py`
+- `tests/test_collection_scale.py`
+- `benchmarks/incident-corpus/`
+- optionally new corpus notes under `docs/`
 
 Tasks:
 - encode the disagreement cases as permanent fixtures:
@@ -348,10 +348,10 @@ Problem:
   evidence strength and issue semantics.
 
 Modules:
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/project_report.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/src/agent_audit/cli.py`
-- `/Users/serg/Documents/ASAMM/agent-audit/docs/report-redesign.md`
-- tests in `/Users/serg/Documents/ASAMM/agent-audit/tests/`
+- `src/agent_audit/project_report.py`
+- `src/agent_audit/cli.py`
+- `docs/report-redesign.md`
+- tests in `tests/`
 
 Tasks:
 - add explicit report sections:
