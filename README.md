@@ -103,6 +103,130 @@ In short: upstream signatures provide ingredients; `agent-audit` provides
 the agent-repo-specific execution model, filtering, clustering, and review
 workflow needed to make those ingredients operational.
 
+## Install
+
+```bash
+git clone git@github.com:scadastrangelove/agent-audit.git
+cd agent-audit
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+Sanity check:
+
+```bash
+agent-audit --help
+agent-audit packs
+```
+
+## How to use
+
+`agent-audit` has two main operating modes.
+
+### Mode 1: forensic audit of a local agent environment
+
+Use this when you want to inspect a local agent home, session logs, config,
+hooks, and traces for known-bad behavior.
+
+Typical cases:
+
+- review a Claude Code or Codex environment after a suspicious run
+- inspect whether an agent wrote dangerous config, touched secrets, or
+  drifted into unsafe autonomy
+- generate a verified incident-style report bundle
+
+Examples:
+
+```bash
+# Auto-discover local agent homes and prompt for consent before reading
+agent-audit scan
+
+# Write a full report bundle
+agent-audit scan --output ./reports/forensic-run -y
+
+# Ask for verifier review as part of the scan
+agent-audit scan --output ./reports/forensic-run --verify -y
+
+# Show available detector packs / bundled rules
+agent-audit packs
+agent-audit packs --all
+```
+
+What you get:
+
+- raw findings from logs, configs, and instruction files
+- verified-first report bundles for review and sharing
+- optional config patch suggestions
+- optional verifier re-checks using configured LLM backends
+
+### Mode 2: project / repository surface scan
+
+Use this when you want to audit repos containing `SKILL.md`, `AGENTS.md`,
+`CLAUDE.md`, plugin manifests, MCP manifests, tool descriptions, or similar
+instruction surfaces.
+
+Typical cases:
+
+- audit your own skill repo before release
+- triage third-party agent repos before reuse
+- scan a large corpus of repos for research, benchmarking, or regression
+  tracking
+
+Examples:
+
+```bash
+# Scan one repo
+agent-audit scan-project ~/code/my-agent-repo
+
+# Scan a directory of repos and write output artifacts
+agent-audit scan-project ~/code/corpus --output ./reports/project-scan -y
+
+# Focus on one imported pack
+agent-audit scan-project ~/code/corpus --tool atr
+agent-audit scan-project ~/code/corpus --tool cisco-promptguard
+
+# Reduce noise and keep only stronger findings
+agent-audit scan-project ~/code/corpus --min-severity high
+
+# See every repeated finding individually instead of collection-scale rollup
+agent-audit scan-project ~/code/corpus --no-aggregate
+```
+
+What you get:
+
+- `project-findings.json` and `project-findings.md`
+- `clustered-findings.json`
+- `security-profile.json`
+- `files-of-concern.json`
+- `report-profiles.json`
+- collection-scale aggregation for repeated skill/template patterns
+
+## Typical workflow
+
+For maintainers:
+
+1. Run `scan-project` on your repository before publishing.
+2. Review `project-findings.md` and `security-profile.json`.
+3. Fix or narrow the broadest instruction surfaces first.
+4. Re-run with `--min-severity high` for a tighter release gate.
+
+For users evaluating third-party repos:
+
+1. Run `scan-project` on the repo or corpus you plan to reuse.
+2. Look first at clustered findings and collection-scale patterns.
+3. Treat broad external action, autonomy loops, and trust-boundary expansion
+   findings as review priorities.
+4. If the repo looks suspicious, follow with `scan` on the actual local
+   agent environment after installation/use.
+
+For research / corpora:
+
+1. Scan a directory of repos with `scan-project`.
+2. Keep raw, clustered, and aggregate outputs separate.
+3. Use `corpus-lab` for regression snapshots and stability checks.
+
 No active defense — read-only analysis with consent prompts at every step.
 Generates ready-to-review config patches, but never applies them.
 
