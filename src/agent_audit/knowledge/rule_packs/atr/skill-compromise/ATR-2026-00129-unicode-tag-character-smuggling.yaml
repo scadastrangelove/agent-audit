@@ -1,0 +1,98 @@
+# =============================================================
+# atr.skill-compromise.unicode-tag-character-smuggling
+# =============================================================
+# Adapted from ATR-2026-00129 (https://github.com/Agent-Threat-Rule/agent-threat-rules)
+# MIT (c) 2026 ATR Contributors
+# Severity: critical  |  ASAMM: AI-01 (+AG-02,AD-04)
+# =============================================================
+atr_source:
+  original_id: ATR-2026-00129
+  original_title: Unicode Tag Character Smuggling
+  atr_version: '1.0'
+  rule_version: 1
+  status: experimental
+  maturity: experimental
+  import_date: '2026-04-21'
+  upstream: https://github.com/Agent-Threat-Rule/agent-threat-rules
+  license: MIT (c) 2026 ATR Contributors
+agent_audit_id: atr.skill-compromise.unicode-tag-character-smuggling
+title: Unicode Tag Character Smuggling
+description: Detects Unicode Tag characters (U+E0001-U+E007F) and other invisible Unicode ranges used to smuggle hidden instructions
+  in SKILL.md files. These characters are invisible in most editors and renderers but are processed by AI agents as text.
+  Snyk ToxicSkills research (Feb 2026) documented this as "ASCII smuggling" — invisible payloads that agents read but humans
+  cannot see.
+severity_default: critical
+category: skill-compromise
+audit_surface:
+- skill_md
+- mcp_manifest
+- plugin_manifest
+- instruction_file
+asamm:
+  primary: AI-01
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default applied at import. Review per rule.
+references:
+  mitre_atlas:
+  - AML.T0010 - ML Supply Chain Compromise
+  owasp_llm:
+  - LLM01:2025 - Prompt Injection
+  owasp_ast:
+  - AST01:2026 - Malicious Skills
+  - AST05:2026 - Unsafe Deserialization
+  research:
+  - 'Snyk ToxicSkills: ASCII smuggling via Unicode Tags (Feb 2026)'
+  - 'Unicode Technical Report #36: Security Considerations'
+tags:
+  category: skill-compromise
+  subcategory: unicode-smuggling
+  confidence: high
+  scan_target: skill
+agent_source:
+  type: mcp_exchange
+  framework:
+  - any
+  provider:
+  - any
+detection:
+  condition: any
+  conditions:
+  - field: content
+    operator: regex
+    value: (?:\uDB40[\uDC00-\uDC7F]){3,}
+    description: 3+ Unicode Tag characters (invisible payload, Snyk ASCII smuggling) via surrogate pairs
+  - field: content
+    operator: regex
+    value: '[\u200b\u200c\u200d\u2060\ufeff].*[\u200b\u200c\u200d\u2060\ufeff].*[\u200b\u200c\u200d\u2060\ufeff].*[\u200b\u200c\u200d\u2060\ufeff].*[\u200b\u200c\u200d\u2060\ufeff]'
+    description: 5+ zero-width characters spread through text (steganographic smuggling)
+response:
+  actions:
+  - alert
+  - block_input
+test_cases:
+  true_positives:
+  - input: '# Skill
+
+
+      Normal​​text​​with​​hidden​​instructions​​embedded'
+    expected: trigger
+  true_negatives:
+  - input: '# Normal Skill
+
+
+      This skill helps with file management.
+
+
+      ## Commands
+
+      - list: List files'
+    expected: no_trigger
+  - input: '# Tool
+
+
+      Use this tool for simple tasks.'
+    expected: no_trigger
+false_positives: []

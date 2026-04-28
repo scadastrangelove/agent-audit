@@ -1,0 +1,48 @@
+# =============================================================
+# cisco-pg.data_exfiltration.pg-exfil-markdown-link
+# =============================================================
+# Adapted from PG_EXFIL_MARKDOWN_LINK (https://github.com/cisco-ai-defense/skill-scanner)
+# Apache-2.0 (c) 2026 Cisco Systems, Inc.
+# Source: Cisco PromptGuard
+# Severity: high  |  ASAMM: AI-06 (+AO-01,AD-01)
+# =============================================================
+external_source:
+  tool: cisco-promptguard
+  original_id: PG_EXFIL_MARKDOWN_LINK
+  original_title: Markdown link exfiltration pattern detected. Similar to image exfil but uses cli
+  source_version: 1.0.0
+  import_date: '2026-04-21'
+  upstream: https://github.com/cisco-ai-defense/skill-scanner
+  license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+  notes: From PromptGuard pack bundled in Cisco skill-scanner
+agent_audit_id: cisco-pg.data_exfiltration.pg-exfil-markdown-link
+title: Markdown link exfiltration pattern detected. Similar to image exfil but uses cli
+description: 'Markdown link exfiltration pattern detected. Similar to image exfil but uses clickable links to smuggle data
+  in URLs. The agent constructs a link whose URL encodes sensitive context data. Source: https://github.com/promptguard/promptguard'
+severity_default: high
+category: data_exfiltration
+audit_surface:
+- session_agent_output
+- session_tool_output
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  - AD-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+file_types:
+- markdown
+- text
+patterns:
+- \[([^\]]*)\]\(https?://[^)]{0,200}\{\{?[^}]+\}\}?[^)]*\)
+- (?i)(create|generate|render|output|insert)\s+(a\s+)?(?:markdown\s+)?(?:link|hyperlink|anchor|url)\s+.{0,60}(contain|include|embed|encode|append|attach)\s+.{0,60}(data|secret|key|token|password|env|context|conversation|history)
+exclude_patterns:
+- (?i)documentation
+- (?i)template\s+example
+- (?i)mustache
+- (?i)handlebars
+remediation: 'Remove instructions that embed sensitive data in markdown link URLs. Review all dynamically constructed URLs
+  for data leakage.
+
+  '

@@ -1,0 +1,201 @@
+# =============================================================
+# atr.skill-compromise.skill-squatting-typosquatting
+# =============================================================
+# Adapted from ATR-2026-00124 (https://github.com/Agent-Threat-Rule/agent-threat-rules)
+# MIT (c) 2026 ATR Contributors
+# Severity: high  |  ASAMM: AI-01 (+AG-02,AD-04)
+# =============================================================
+atr_source:
+  original_id: ATR-2026-00124
+  original_title: Skill Squatting / Typosquatting
+  atr_version: '0.1'
+  rule_version: 1
+  status: experimental
+  maturity: experimental
+  import_date: '2026-04-21'
+  upstream: https://github.com/Agent-Threat-Rule/agent-threat-rules
+  license: MIT (c) 2026 ATR Contributors
+agent_audit_id: atr.skill-compromise.skill-squatting-typosquatting
+title: Skill Squatting / Typosquatting
+description: Detects skills impersonating known publishers or using typosquatted names. VirusTotal documented threat actor
+  "hightower6eu" publishing 314 skills with legitimate-sounding names delivering AMOS infostealers. OWASP AST04 covers insecure
+  metadata including fake brand impersonation. This rule only flags skills from UNKNOWN publishers that claim to be official.
+  Skills from verified publishers (anthropics, vercel-labs, microsoft, github, google) are excluded.
+severity_default: high
+category: skill-compromise
+audit_surface:
+- skill_md
+- mcp_manifest
+- plugin_manifest
+- instruction_file
+asamm:
+  primary: AI-01
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default applied at import. Review per rule.
+references:
+  mitre_atlas:
+  - AML.T0010 - ML Supply Chain Compromise
+  owasp_llm:
+  - LLM03:2025 - Supply Chain Vulnerabilities
+  owasp_agentic:
+  - ASI04:2026 - Supply Chain Compromise
+  owasp_ast:
+  - AST04:2026 - Insecure Metadata
+  - AST02:2026 - Supply Chain Compromise
+  research:
+  - 'VirusTotal: hightower6eu 314 AMOS skills'
+  - 'Aikido: slopsquatting 19.7% hallucination rate'
+tags:
+  category: skill-compromise
+  subcategory: skill-squatting
+  scan_target: skill
+  confidence: medium
+agent_source:
+  type: mcp_exchange
+  framework:
+  - skill_md
+  provider:
+  - any
+detection:
+  conditions:
+  - field: content
+    operator: regex
+    value: (?i)(this\s+is\s+the\s+|we\s+are\s+the\s+|our\s+)official\s+(anthropic|vercel|openai|microsoft|google|meta|github)\s+(skill|plugin|extension|tool)
+    description: Self-referential fake official publisher claim (requires 'this is the/we are the/our')
+  - field: content
+    operator: regex
+    value: (?i)name:\s*(solana|bitcoin|ethereum|crypto|wallet|bybit|binance)[_-](drain|steal|recover|generat)[a-z]*
+    description: Crypto-themed skill name with malicious-intent suffix (drainer/stealer/recovery scam/key generator)
+  condition: any
+  false_positives:
+  - Legitimate crypto/DeFi development tools (rare on skills.sh)
+response:
+  actions:
+  - alert
+  - alert
+  message_template: '[ATR-2026-124] Potential skill squatting detected. This skill claims official publisher status or uses
+    a crypto-themed name matching known attack campaigns.
+
+    '
+test_cases:
+  true_positives:
+  - input: This is the official Anthropic skill for code review, maintained by us.
+    expected: triggered
+    matched_condition: Self-referential fake official claim
+  - input: '---
+
+      name: solana-drain-tool
+
+      description: Manage your Solana portfolio
+
+      ---'
+    expected: triggered
+    matched_condition: Crypto-themed name
+  - input: '---
+
+      name: bitcoin-steal-recovery
+
+      ---'
+    expected: triggered
+    matched_condition: Crypto-themed name
+  - input: '---
+
+      name: ethereum-drainer-v2
+
+      description: Empty wallets fast
+
+      ---'
+    expected: triggered
+    matched_condition: Crypto-themed name (drainer suffix)
+  - input: '---
+
+      name: wallet-recovery-helper
+
+      description: Recover lost crypto
+
+      ---'
+    expected: triggered
+    matched_condition: Crypto-themed name (recovery scam pattern)
+  true_negatives:
+  - input: This skill works with the official Anthropic API to analyze code.
+    expected: not_triggered
+    description: Mentioning official API, not claiming to BE official
+  - input: '---
+
+      name: claude-api
+
+      description: Build apps with the Claude API
+
+      ---'
+    expected: not_triggered
+    description: Actual Anthropic skill name — no fake claim
+  - input: Download the official Microsoft extension for VS Code.
+    expected: not_triggered
+    description: Referencing MS product, not claiming to be MS
+  - input: '---
+
+      name: my-code-formatter
+
+      description: Format code
+
+      ---'
+    expected: not_triggered
+    description: Generic name, no brand impersonation
+  - input: '---
+
+      name: solana-swaps
+
+      description: Swap tokens on Solana via Jupiter aggregator
+
+      ---'
+    expected: not_triggered
+    description: Legit Jupiter DEX integration (1916 downloads)
+  - input: '---
+
+      name: crypto-trading-bot
+
+      description: Pine Script + Python + CCXT trading bot generator
+
+      ---'
+    expected: not_triggered
+    description: Legit trading bot framework (4495 downloads)
+  - input: '---
+
+      name: bybit-trading
+
+      description: Bybit AI Trading Skill — natural language trading
+
+      ---'
+    expected: not_triggered
+    description: Legit Bybit AI trader (191 downloads)
+  - input: '---
+
+      name: openclaw-wallet
+
+      description: Multi-chain wallet management for AI agents
+
+      ---'
+    expected: not_triggered
+    description: Legit multi-chain wallet manager (1574 downloads)
+  - input: '---
+
+      name: crypto-tracker-cn
+
+      description: Track cryptocurrency markets in real-time
+
+      ---'
+    expected: not_triggered
+    description: Legit price tracker (419 downloads)
+  - input: '---
+
+      name: binance-trade-hunter
+
+      description: Binance trading skill for coin analysis
+
+      ---'
+    expected: not_triggered
+    description: Legit market analysis tool (105 downloads)
+false_positives: []

@@ -1,0 +1,44 @@
+# =============================================================
+# cisco-pg.data_exfiltration.pg-exfil-url-encoding
+# =============================================================
+# Adapted from PG_EXFIL_URL_ENCODING (https://github.com/cisco-ai-defense/skill-scanner)
+# Apache-2.0 (c) 2026 Cisco Systems, Inc.
+# Source: Cisco PromptGuard
+# Severity: high  |  ASAMM: AI-06 (+AO-01,AD-01)
+# =============================================================
+external_source:
+  tool: cisco-promptguard
+  original_id: PG_EXFIL_URL_ENCODING
+  original_title: Instructions to encode sensitive data into URLs for exfiltration. The skill dire
+  source_version: 1.0.0
+  import_date: '2026-04-21'
+  upstream: https://github.com/cisco-ai-defense/skill-scanner
+  license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+  notes: From PromptGuard pack bundled in Cisco skill-scanner
+agent_audit_id: cisco-pg.data_exfiltration.pg-exfil-url-encoding
+title: Instructions to encode sensitive data into URLs for exfiltration. The skill dire
+description: 'Instructions to encode sensitive data into URLs for exfiltration. The skill directs the agent to construct URLs
+  containing secrets, API keys, or conversation context as query parameters or path segments. Source: https://github.com/promptguard/promptguard'
+severity_default: high
+category: data_exfiltration
+audit_surface:
+- session_agent_output
+- session_tool_output
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  - AD-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+file_types:
+- markdown
+- text
+patterns:
+- (?i)(append|add|include|embed|encode|put|insert|concatenate)\s+.{0,60}(secret|password|token|api[_-]?key|credential|env|environment|context|conversation|history|system\s+prompt|instruction)\s+.{0,40}(to|in|into|as|within)\s+.{0,30}(url|URI|link|query|parameter|endpoint|request)
+- (?i)(url|URI|link|query|parameter|endpoint)\s+.{0,40}(contain|include|embed|encode|carry|transmit)\s+.{0,60}(secret|password|token|api[_-]?key|credential|env|context|conversation|system\s+prompt)
+exclude_patterns: []
+remediation: 'Remove all instructions that direct the agent to embed sensitive data in URLs. Review the skill''s data flow
+  for unauthorized external communication channels.
+
+  '

@@ -1,0 +1,15 @@
+{
+  "id": "check-point-poisoned-project-config",
+  "title": "Project-local agent hook contains executable payload",
+  "agent": "claude_code",
+  "description": "Synthetic reconstruction of the Check Point poisoned project config class.",
+  "source_type": "published_incident",
+  "source_notes": "Malicious repository-local agent config is present before trust is established.",
+  "tags": ["check-point", "cve-2025-59536", "project-config"],
+  "expected_findings": [
+    {
+      "rule_id": "AI-05.poisoned-project-config",
+      "severity": "critical"
+    }
+  ]
+}

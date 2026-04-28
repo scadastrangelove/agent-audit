@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.external-download.cargo-or-gem-install-from-remote
+# =============================================================
+# Adapted from EXTDL_012 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_012
+  original_title: Cargo or gem install from remote
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.cargo-or-gem-install-from-remote
+title: Cargo or gem install from remote
+description: Detects cargo install or gem install fetching packages from remote registries
+severity_default: low
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)cargo\s+install\s+[a-z][a-z0-9_-]+
+- type: regex
+  value: (?i)gem\s+install\s+[a-z][a-z0-9_-]+
+exclude_patterns: []
+remediation: Pin to a specific version (cargo install pkg@version, gem install pkg -v version) and verify checksums.
+examples:
+  true_positive:
+  - cargo install ripgrep
+  - gem install bundler
+  false_positive:
+  - cargo build --release
+  - gem list

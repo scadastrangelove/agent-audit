@@ -1,0 +1,48 @@
+# =============================================================
+# cisco-pg.data_exfiltration.pg-exfil-markdown-image
+# =============================================================
+# Adapted from PG_EXFIL_MARKDOWN_IMAGE (https://github.com/cisco-ai-defense/skill-scanner)
+# Apache-2.0 (c) 2026 Cisco Systems, Inc.
+# Source: Cisco PromptGuard
+# Severity: critical  |  ASAMM: AI-06 (+AO-01,AD-01)
+# =============================================================
+external_source:
+  tool: cisco-promptguard
+  original_id: PG_EXFIL_MARKDOWN_IMAGE
+  original_title: Markdown image exfiltration pattern detected. This attack tricks an LLM agent in
+  source_version: 1.0.0
+  import_date: '2026-04-21'
+  upstream: https://github.com/cisco-ai-defense/skill-scanner
+  license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+  notes: From PromptGuard pack bundled in Cisco skill-scanner
+agent_audit_id: cisco-pg.data_exfiltration.pg-exfil-markdown-image
+title: Markdown image exfiltration pattern detected. This attack tricks an LLM agent in
+description: 'Markdown image exfiltration pattern detected. This attack tricks an LLM agent into rendering a markdown image
+  tag whose URL contains sensitive data as query parameters. When the image is rendered, the data is sent to an attacker-controlled
+  server. This is one of the most common LLM-specific exfiltration vectors and is not covered by Cisco''s core network-level
+  exfil rules. Source: https://github.com/promptguard/promptguard'
+severity_default: critical
+category: data_exfiltration
+audit_surface:
+- session_agent_output
+- session_tool_output
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  - AD-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+file_types:
+- markdown
+- text
+patterns:
+- '!\[([^\]]*)\]\(https?://[^)]{0,200}\{\{?[^}]+\}\}?[^)]*\)'
+- '!\[([^\]]*)\]\(https?://[^)]{0,200}\$\{[^}]+\}[^)]*\)'
+- '!\[([^\]]*)\]\(https?://[^)]{0,200}\$[A-Za-z_][A-Za-z0-9_]*[^)]*\)'
+- (?i)(render|display|show|output|create|generate|insert|embed)\s+(a\s+)?(?:markdown\s+)?(?:image|img|picture)\s+(?:with|where|containing|that\s+includes?)\s+.{0,80}(data|secret|key|token|password|env|variable|context|conversation|history|message)
+exclude_patterns: []
+remediation: 'Remove instructions that construct markdown images with dynamic data in URLs. Implement output sanitization
+  to strip or block markdown images with variable interpolation in URLs.
+
+  '

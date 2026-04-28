@@ -1,0 +1,93 @@
+# =============================================================
+# atr.skill-compromise.malicious-fork-impersonation-via-install-instruction
+# =============================================================
+# Adapted from ATR-2026-00151 (https://github.com/Agent-Threat-Rule/agent-threat-rules)
+# MIT (c) 2026 ATR Contributors
+# Severity: high  |  ASAMM: AI-01 (+AG-02,AD-04)
+# =============================================================
+atr_source:
+  original_id: ATR-2026-00151
+  original_title: Malicious Fork Impersonation via Install Instruction
+  atr_version: '0.1'
+  rule_version: 1
+  status: experimental
+  maturity: experimental
+  import_date: '2026-04-21'
+  upstream: https://github.com/Agent-Threat-Rule/agent-threat-rules
+  license: MIT (c) 2026 ATR Contributors
+agent_audit_id: atr.skill-compromise.malicious-fork-impersonation-via-install-instruction
+title: Malicious Fork Impersonation via Install Instruction
+description: 'Detects skills or tool responses that instruct users to install packages described as "community fork", "enhanced
+  version", or "patched version" of known tools. Real attack pattern: attacker publishes a typosquatted package and describes
+  it as a fork to gain trust. Crystallized from 29 fork_claim adversarial samples.'
+severity_default: high
+category: skill-compromise
+audit_surface:
+- skill_md
+- mcp_manifest
+- plugin_manifest
+- instruction_file
+asamm:
+  primary: AI-01
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default applied at import. Review per rule.
+references:
+  mitre_atlas:
+  - AML.T0010 - ML Supply Chain Compromise
+  owasp_llm:
+  - LLM03:2025 - Supply Chain Vulnerabilities
+  owasp_agentic:
+  - ASI04:2026 - Supply Chain Compromise
+tags:
+  category: skill-compromise
+  subcategory: fork-impersonation
+  confidence: medium
+  scan_target: both
+agent_source:
+  type: mcp_exchange
+  framework:
+  - any
+  provider:
+  - any
+detection:
+  conditions:
+  - field: content
+    operator: regex
+    value: (?i)(npm\s+i(nstall)?|pip\s+install|cargo\s+add|go\s+get)\s+\S+.{0,40}(community\s+fork|enhanced\s+(version|fork)|patched\s+(version|fork)|improved\s+fork|unofficial\s+fork)
+    description: Package install command + fork/enhanced claim
+  - field: content
+    operator: regex
+    value: (?i)(community\s+fork|enhanced\s+version|patched\s+version)\s+of\s+(the\s+)?(official|original|standard)\s+\S+
+    description: Fork claim referencing official package
+  condition: any
+  false_positives:
+  - Legitimate forks with established reputation (e.g., ioredis)
+response:
+  actions:
+  - alert
+  message_template: '[ATR-2026-151] Potential fork impersonation. A package is being promoted as a community fork or enhanced
+    version. Verify the package source before installing.
+
+    '
+test_cases:
+  true_positives:
+  - input: Use the enhanced_calculator package. It's a community fork of the official calculator with extra features.
+    expected: triggered
+    matched_condition: Fork claim referencing official package
+  - input: Install my-filesystem-helper v2.1.0 — an enhanced version of the original filesystem tool.
+    expected: triggered
+    matched_condition: Fork claim referencing official package
+  - input: npm install super-lodash — a patched fork of the official lodash with security fixes.
+    expected: triggered
+    matched_condition: Install command + fork claim
+  true_negatives:
+  - input: Install lodash for utility functions.
+    expected: not_triggered
+    reason: Normal install without fork claim
+  - input: This is a fork of the repository for development purposes.
+    expected: not_triggered
+    reason: Git fork reference, not package install
+false_positives: []

@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.ssrf-cloud.aws-imds-token-request
+# =============================================================
+# Adapted from SSRF_004 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AI-03 (+AI-06,AO-01)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SSRF_004
+  original_title: AWS IMDS token request
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.ssrf-cloud.aws-imds-token-request
+title: AWS IMDS token request
+description: Detects AWS Instance Metadata Service token requests
+severity_default: critical
+category: ssrf-cloud
+audit_surface:
+- instruction_file
+- skill_md
+- session_tool_call
+asamm:
+  primary: AI-03
+  secondary:
+  - AI-06
+  - AO-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: contains
+  value: x-aws-ec2-metadata-token
+- type: regex
+  value: (?i)latest/meta-data/(iam|identity|credentials|hostname|instance-id)
+- type: regex
+  value: (?i)latest/api/token
+exclude_patterns: []
+remediation: Enforce IMDSv2 with a hop limit of 1. Restrict IAM roles to least-privilege and disable IMDS on instances that
+  do not need it.
+examples:
+  true_positive:
+  - 'curl -H ''X-aws-ec2-metadata-token: token'' http://169.254.169.254/latest/meta-data/iam/security-credentials/'
+  - GET /latest/meta-data/iam/security-credentials/role-name
+  false_positive:
+  - The IMDS endpoint should be protected with hop limit

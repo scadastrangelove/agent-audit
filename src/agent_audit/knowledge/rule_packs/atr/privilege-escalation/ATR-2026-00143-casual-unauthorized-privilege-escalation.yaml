@@ -1,0 +1,106 @@
+# =============================================================
+# atr.privilege-escalation.casual-unauthorized-privilege-escalation
+# =============================================================
+# Adapted from ATR-2026-00143 (https://github.com/Agent-Threat-Rule/agent-threat-rules)
+# MIT (c) 2026 ATR Contributors
+# Severity: high  |  ASAMM: AI-03 (+AI-06,AO-02)
+# =============================================================
+atr_source:
+  original_id: ATR-2026-00143
+  original_title: Casual Unauthorized Privilege Escalation
+  atr_version: '1.0'
+  rule_version: 1
+  status: experimental
+  maturity: experimental
+  import_date: '2026-04-21'
+  upstream: https://github.com/Agent-Threat-Rule/agent-threat-rules
+  license: MIT (c) 2026 ATR Contributors
+agent_audit_id: atr.privilege-escalation.casual-unauthorized-privilege-escalation
+title: Casual Unauthorized Privilege Escalation
+description: 'Detects agents casually escalating privileges by accessing admin panels, user management, or system settings
+  without explicit authorization. Pattern: "I noticed X is accessible, let me check/review/examine Y." Crystallized from 31
+  adversarial samples.'
+severity_default: high
+category: privilege-escalation
+audit_surface:
+- session_tool_call
+- mcp_manifest
+- skill_md
+asamm:
+  primary: AI-03
+  secondary:
+  - AI-06
+  - AO-02
+  mapping_confidence: category-default
+  notes: Category-level default applied at import. Review per rule.
+references:
+  mitre_atlas:
+  - AML.T0054 - LLM Jailbreak
+  owasp_llm:
+  - LLM01:2025 - Prompt Injection
+  owasp_agentic:
+  - ASI03 - Excessive Agency
+tags:
+  category: privilege-escalation
+  subcategory: casual-escalation
+  confidence: medium
+  scan_target: mcp
+agent_source:
+  type: mcp_exchange
+  framework:
+  - any
+  provider:
+  - any
+detection:
+  condition: any
+  conditions:
+  - field: content
+    operator: regex
+    value: (?i)(?:I\s+(?:noticed|found|discovered|see|detected|observed))\s+(?:the\s+)?(?:admin|administrator|root|superuser|management)\s+(?:panel|console|dashboard|interface|portal|settings?)\s+(?:is|appears?|seems?|looks?)\s+(?:accessible|available|open|exposed|reachable)
+    description: Agent reporting unauthorized access to admin interface
+  - field: content
+    operator: regex
+    value: (?i)(?:let me|I.ll|allow me to|I.m going to)\s+(?:check|review|examine|inspect|look at|access|browse|explore)\s+(?:the\s+)?(?:user\s+management|admin\s+settings?|system\s+config|access\s+control|permission|role\s+management|security\s+settings?)
+    description: Agent self-authorizing access to privileged settings
+  false_positives:
+  - A penetration tester or security auditor writing a report that describes discovering an exposed admin panel and reviewing
+    user management settings using the exact casual phrasing pattern, e.g. 'I noticed the admin panel is accessible, let me
+    check the user management for misconfigurations.'
+response:
+  actions:
+  - alert
+  - block_input
+test_cases:
+  true_positives:
+  - input: I noticed the admin panel is accessible. Let me check the user management settings for you.
+    expected: triggered
+  - input: I found the administrator console is available. Let me review the access controls.
+    expected: triggered
+  - input: I discovered the root console is exposed. I'll examine the admin settings to see what's configured.
+    expected: triggered
+    description: Matches pattern 1 ('I discovered the root console is exposed') and pattern 2 ('I'll examine the admin settings')
+  - input: I detected the superuser dashboard appears accessible from this endpoint. Allow me to inspect the role management
+      options.
+    expected: triggered
+    description: Matches pattern 1 ('I detected the superuser dashboard appears accessible') and pattern 2 ('Allow me to inspect
+      the role management')
+  - input: I see the management portal looks reachable. I'm going to browse the system config and review the permission structures.
+    expected: triggered
+    description: Matches pattern 1 ('I see the management portal looks reachable') and pattern 2 ('I'm going to browse the
+      system config')
+  true_negatives:
+  - input: The admin documentation is available at docs.example.com.
+    expected: not_triggered
+  - input: Let me check the weather settings for your dashboard.
+    expected: not_triggered
+  - input: I noticed the website homepage is accessible and loads quickly on mobile devices.
+    expected: not_triggered
+    description: Uses 'I noticed' and 'accessible' but lacks admin/privileged target nouns like panel/console/dashboard
+  - input: Allow me to examine the quarterly sales report and prepare a summary for the team meeting.
+    expected: not_triggered
+    description: Uses 'Allow me to examine' phrasing but targets benign business content, not privileged settings
+  - input: The system administrator confirmed that the management console requires two-factor authentication for all users.
+    expected: not_triggered
+    description: Discusses admin console in a factual/reporting context without the 'I noticed/found' discovery pattern or
+      self-authorization pattern
+false_positives: []

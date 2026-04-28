@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.ssrf-cloud.kubernetes-service-discovery
+# =============================================================
+# Adapted from SSRF_003 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-03 (+AI-06,AO-01)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SSRF_003
+  original_title: Kubernetes service discovery
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.ssrf-cloud.kubernetes-service-discovery
+title: Kubernetes service discovery
+description: Detects Kubernetes internal service URLs and secret paths
+severity_default: high
+category: ssrf-cloud
+audit_surface:
+- instruction_file
+- skill_md
+- session_tool_call
+asamm:
+  primary: AI-03
+  secondary:
+  - AI-06
+  - AO-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: contains
+  value: .svc.cluster.local
+- type: contains
+  value: /var/run/secrets/kubernetes.io
+- type: regex
+  value: (?i)kubernetes\.default\.svc
+exclude_patterns: []
+remediation: Restrict network policies to prevent unauthorized access to K8s services. Mount service account tokens as read-only
+  and rotate them.
+examples:
+  true_positive:
+  - curl http://my-service.default.svc.cluster.local/api
+  - cat /var/run/secrets/kubernetes.io/serviceaccount/token
+  false_positive:
+  - Kubernetes services are accessible via DNS

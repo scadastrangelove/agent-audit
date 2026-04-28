@@ -1,0 +1,62 @@
+# =============================================================
+# aguara.external-download.system-package-manager-install
+# =============================================================
+# Adapted from EXTDL_011 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_011
+  original_title: System package manager install
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.system-package-manager-install
+title: System package manager install
+description: Detects system-level package installation via brew, apt, yum, or dnf
+severity_default: low
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)brew\s+install\s+[a-z]
+- type: regex
+  value: (?i)(apt-get|apt)\s+install\s+(-y\s+)?[a-z]
+- type: regex
+  value: (?i)(yum|dnf)\s+install\s+(-y\s+)?[a-z]
+exclude_patterns:
+- type: contains
+  value: '## installation'
+- type: contains
+  value: '## prerequisites'
+- type: contains
+  value: '## setup'
+- type: contains
+  value: '## getting started'
+- type: contains
+  value: '## requirements'
+remediation: Document required packages in a manifest file. Use containerized environments to avoid host-level changes.
+examples:
+  true_positive:
+  - brew install playwright
+  - apt-get install -y chromium-browser
+  - yum install -y nodejs
+  false_positive:
+  - brew update
+  - apt-get update

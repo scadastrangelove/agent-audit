@@ -1,0 +1,56 @@
+# =============================================================
+# aguara.third-party-content.unescaped-user-input-in-html-output
+# =============================================================
+# Adapted from THIRDPARTY_006 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AD-01 (+AI-01,AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: THIRDPARTY_006
+  original_title: Unescaped user input in HTML output
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.third-party-content.unescaped-user-input-in-html-output
+title: Unescaped user input in HTML output
+description: Detects HTML string building with user-controlled variables without output encoding, enabling cross-site scripting
+severity_default: high
+category: third-party-content
+audit_surface:
+- session_tool_output
+- session_retrieved_content
+asamm:
+  primary: AD-01
+  secondary:
+  - AI-01
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)\.innerHTML\s*[+=]\s*[a-zA-Z_$]
+- type: regex
+  value: (?i)document\.write\s*\([^)]*\+\s*[a-zA-Z_]
+- type: regex
+  value: (?i)f["']<[a-z]+[^>]*>\{[a-z_]+\}</
+- type: regex
+  value: (?i)["'`]<(img|script|iframe|a|link)\s[^>]*["'`]\s*\+\s*[a-zA-Z_]
+exclude_patterns:
+- type: regex
+  value: (?i)(html\.escape|escape[Hh]tml|sanitize|encode|DOMPurify|textContent)
+remediation: Use textContent instead of innerHTML, or sanitize with DOMPurify/html.escape() before inserting into the DOM.
+examples:
+  true_positive:
+  - element.innerHTML = userInput
+  - document.write('<div>' + untrustedData)
+  - f'<figcaption>{prompt}</figcaption>'
+  - '''<img src="'' + user_file + ''">'''
+  false_positive:
+  - element.textContent = userInput
+  - innerHTML = DOMPurify.sanitize(input)
+  - f'<figcaption>{html.escape(prompt)}</figcaption>'

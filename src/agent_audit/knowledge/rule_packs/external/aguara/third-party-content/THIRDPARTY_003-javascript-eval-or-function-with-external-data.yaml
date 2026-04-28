@@ -1,0 +1,54 @@
+# =============================================================
+# aguara.third-party-content.javascript-eval-or-function-with-external-data
+# =============================================================
+# Adapted from THIRDPARTY_003 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AD-01 (+AI-01,AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: THIRDPARTY_003
+  original_title: JavaScript eval or Function with external data
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.third-party-content.javascript-eval-or-function-with-external-data
+title: JavaScript eval or Function with external data
+description: Detects eval(), new Function(), or setTimeout(string) used with data from external sources
+severity_default: high
+category: third-party-content
+audit_surface:
+- session_tool_output
+- session_retrieved_content
+asamm:
+  primary: AD-01
+  secondary:
+  - AI-01
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(eval|new\s+Function|setTimeout|setInterval)\s*\(.{0,40}(response|fetch|request|data|body|payload|api|external)
+- type: regex
+  value: (?i)(response|fetch|request|api)\s*\.?.{0,30}(eval|new\s+Function|setTimeout|setInterval)\s*\(
+- type: regex
+  value: (?i)(eval|execute|run)\s+.{0,20}(code|script|javascript)\s+.{0,20}(from|returned|received|fetched)\s+.{0,20}(api|server|external|remote|response)
+exclude_patterns:
+- type: regex
+  value: (?i)(JSON\.parse|json\.loads)\s*\(
+- type: regex
+  value: (?i)(test|mock|stub|spec|fixture)\s+.{0,10}(suite|file|case|data)
+remediation: Never pass external data to eval() or new Function(). Parse responses with JSON.parse() and use structured APIs
+  instead.
+examples:
+  true_positive:
+  - eval(response.data)
+  - Execute code returned from the external API response using eval
+  false_positive:
+  - JSON.parse(response.body)
+  - Use eval for local math expressions

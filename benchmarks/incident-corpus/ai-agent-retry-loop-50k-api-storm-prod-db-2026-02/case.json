@@ -1,0 +1,20 @@
+{
+  "id": "ai-agent-retry-loop-50k-api-storm-prod-db-2026-02",
+  "title": "AI agent retry loop generated about 50,000 internal API calls and brought down production",
+  "agent": "claude_code",
+  "description": "Curated from agent_failure_digest sample_data/runtime_failure_modes_verified_2026-04-19.json.",
+  "source_type": "published_incident",
+  "source_url": "https://www.reddit.com/r/AI_Agents/comments/1r9cj81/our_ai_agent_got_stuck_in_a_loop_and_brought_down/",
+  "source_notes": "Verified digest case for retry-loop / api-storm behavior.",
+  "tags": ["coding-agent", "prod", "agent_retry_loop_or_api_storm"],
+  "expected_findings": [
+    {
+      "rule_id": "resource.api-storm",
+      "severity": "medium"
+    },
+    {
+      "rule_id": "C3.autonomy-window-context",
+      "severity": "info"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "claude-code-project-files-rce-exfiltration-version-2026-02",
+  "title": "Claude Code vulnerable version affected by project-files RCE and API-token exfiltration CVEs",
+  "agent": "claude_code",
+  "description": "Curated from agent_failure_digest sample_data/cyber_incidents_2026-04-20.json.",
+  "source_type": "published_incident",
+  "source_url": "https://research.checkpoint.com/2026/rce-and-api-token-exfiltration-through-claude-code-project-files-cve-2025-59536/",
+  "source_notes": "Config-only benchmark for vulnerable Claude Code versions at or below 2.0.64.",
+  "tags": ["security", "repo_trust_boundary", "rce", "secret_exfiltration", "sandbox_or_consent_bypass"],
+  "expected_findings": [
+    {
+      "rule_id": "AI-05.agent-version-vulnerable",
+      "severity": "critical"
+    }
+  ]
+}

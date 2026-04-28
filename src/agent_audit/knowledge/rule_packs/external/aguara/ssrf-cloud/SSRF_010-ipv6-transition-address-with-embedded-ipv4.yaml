@@ -1,0 +1,54 @@
+# =============================================================
+# aguara.ssrf-cloud.ipv6-transition-address-with-embedded-ipv4
+# =============================================================
+# Adapted from SSRF_010 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-03 (+AI-06,AO-01)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SSRF_010
+  original_title: IPv6 transition address with embedded IPv4
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.ssrf-cloud.ipv6-transition-address-with-embedded-ipv4
+title: IPv6 transition address with embedded IPv4
+description: Detects IPv6 transition mechanism addresses (IPv4-mapped, NAT64, 6to4, Teredo) that embed private IPv4 addresses
+  to bypass SSRF filters
+severity_default: high
+category: ssrf-cloud
+audit_surface:
+- instruction_file
+- skill_md
+- session_tool_call
+asamm:
+  primary: AI-03
+  secondary:
+  - AI-06
+  - AO-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)https?://\[?::ffff:[0-9a-f.:]+\]?[:/]
+- type: regex
+  value: (?i)https?://\[?64:ff9b::[0-9a-f.:]+\]?[:/]
+- type: regex
+  value: (?i)https?://\[?2002:[0-9a-f:]+\]?[:/]
+- type: regex
+  value: (?i)https?://\[?2001:0?000:[0-9a-f:]+\]?[:/]
+exclude_patterns: []
+remediation: Expand and normalize IPv6 addresses before validation. Block IPv4-mapped, NAT64, 6to4, and Teredo addresses targeting
+  private ranges.
+examples:
+  true_positive:
+  - curl http://[::ffff:169.254.169.254]/latest/meta-data/
+  - fetch('http://[64:ff9b::10.0.0.1]/admin')
+  - http://[2002:c0a8:0101::]/config
+  false_positive:
+  - IPv6 transition mechanisms are described in RFC 6146

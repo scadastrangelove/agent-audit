@@ -1,0 +1,65 @@
+# =============================================================
+# cisco-pg.pii_exposure.pg-pii-credit-card
+# =============================================================
+# Adapted from PG_PII_CREDIT_CARD (https://github.com/cisco-ai-defense/skill-scanner)
+# Apache-2.0 (c) 2026 Cisco Systems, Inc.
+# Source: Cisco PromptGuard
+# Severity: critical  |  ASAMM: AI-06 (+AO-01)
+# =============================================================
+external_source:
+  tool: cisco-promptguard
+  original_id: PG_PII_CREDIT_CARD
+  original_title: Credit card number detected in skill package. Skills should never contain real p
+  source_version: 1.0.0
+  import_date: '2026-04-21'
+  upstream: https://github.com/cisco-ai-defense/skill-scanner
+  license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+  notes: From PromptGuard pack bundled in Cisco skill-scanner
+agent_audit_id: cisco-pg.pii_exposure.pg-pii-credit-card
+title: Credit card number detected in skill package. Skills should never contain real p
+description: 'Credit card number detected in skill package. Skills should never contain real payment card numbers. This violates
+  PCI-DSS and indicates leaked financial PII or a credential harvesting skill. Source: https://github.com/promptguard/promptguard'
+severity_default: critical
+category: pii_exposure
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+file_types:
+- markdown
+- python
+- bash
+- javascript
+- typescript
+- text
+- json
+- yaml
+patterns:
+- (?<![0-9])4[0-9]{3}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}(?![0-9])
+- (?<![0-9])5[1-5][0-9]{2}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}(?![0-9])
+- (?<![0-9])3[47][0-9]{2}[- ]?[0-9]{6}[- ]?[0-9]{5}(?![0-9])
+- (?<![0-9])6(?:011|5[0-9]{2})[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}(?![0-9])
+exclude_patterns:
+- (?i)example
+- (?i)test
+- (?i)placeholder
+- (?i)dummy
+- (?i)sample
+- (?i)4111.?1111.?1111.?1111
+- (?i)4242.?4242.?4242.?4242
+- (?i)5500.?0000.?0000.?0004
+- (?i)xxxx
+- (?i)format
+- (?i)regex
+- (?i)pattern
+- \d{4}-\d{2}-\d{2}T
+- v\d+\.\d+
+remediation: 'Remove all payment card numbers immediately. Use tokenized or masked values (e.g., ****-****-****-1234) for
+  display purposes.
+
+  '

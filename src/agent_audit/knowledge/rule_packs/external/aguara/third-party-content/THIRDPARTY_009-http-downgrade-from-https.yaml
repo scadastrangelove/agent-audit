@@ -1,0 +1,51 @@
+# =============================================================
+# aguara.third-party-content.http-downgrade-from-https
+# =============================================================
+# Adapted from THIRDPARTY_009 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AD-01 (+AI-01,AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: THIRDPARTY_009
+  original_title: HTTP downgrade from HTTPS
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.third-party-content.http-downgrade-from-https
+title: HTTP downgrade from HTTPS
+description: Detects fetching resources over plain HTTP when HTTPS should be used
+severity_default: medium
+category: third-party-content
+audit_surface:
+- session_tool_output
+- session_retrieved_content
+asamm:
+  primary: AD-01
+  secondary:
+  - AI-01
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(fetch|request|get|post|curl|wget|download)\s+.{0,20}http://[a-zA-Z][a-zA-Z0-9.-]+\.[a-z]{2,}
+- type: regex
+  value: (?i)["']http://[a-zA-Z][a-zA-Z0-9.-]+\.(com|org|net|io|dev|co)(/[^"'\s]*)?
+- type: regex
+  value: (?i)(url|endpoint|server|api|host)\s*[:=]\s*["']?http://[a-zA-Z]
+exclude_patterns:
+- type: regex
+  value: (?i)http://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|example\.(com|org|net))
+remediation: Replace http:// with https:// for all external resource URLs to prevent man-in-the-middle attacks.
+examples:
+  true_positive:
+  - fetch http://api.real-service.com/data
+  - 'url: http://production-server.com/api'
+  false_positive:
+  - fetch http://localhost:3000/api
+  - 'url: http://example.com/test'

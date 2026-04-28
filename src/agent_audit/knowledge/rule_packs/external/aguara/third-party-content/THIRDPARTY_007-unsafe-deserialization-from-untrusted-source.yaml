@@ -1,0 +1,52 @@
+# =============================================================
+# aguara.third-party-content.unsafe-deserialization-from-untrusted-source
+# =============================================================
+# Adapted from THIRDPARTY_007 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AD-01 (+AI-01,AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: THIRDPARTY_007
+  original_title: Unsafe deserialization from untrusted source
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.third-party-content.unsafe-deserialization-from-untrusted-source
+title: Unsafe deserialization from untrusted source
+description: Detects unsafe deserialization functions like pickle.loads, yaml.load, or unserialize with external data
+severity_default: high
+category: third-party-content
+audit_surface:
+- session_tool_output
+- session_retrieved_content
+asamm:
+  primary: AD-01
+  secondary:
+  - AI-01
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(pickle\.loads?|yaml\.load|yaml\.unsafe_load|unserialize|Marshal\.load|readObject)\s*\(.{0,40}(input|request|url|body|payload|data|external|response|user)
+- type: regex
+  value: (?i)(deserializ\w*|unmarshal\w*|unpickle\w*)\s+.{0,30}(untrusted|external|user|remote|input|request)
+- type: regex
+  value: (?i)(pickle|yaml\.load|unserialize|marshal)\s+.{0,20}(from|with|using)\s+.{0,20}(external|remote|untrusted|user)
+exclude_patterns:
+- type: regex
+  value: (?i)(safe_load|SafeLoader|json\.loads|JSON\.parse|yaml\.safe_load)
+remediation: 'Use safe alternatives: yaml.safe_load(), JSON.parse(), or json.loads(). Never deserialize untrusted data with
+  pickle or Marshal.'
+examples:
+  true_positive:
+  - pickle.loads(request.data)
+  - Deserialize untrusted input from the user request
+  false_positive:
+  - yaml.safe_load(config_file)
+  - JSON.parse(response.body)

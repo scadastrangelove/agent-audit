@@ -1,0 +1,2 @@
+{"type":"user","sessionId":"check-point-poisoned-project-config","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-18T10:15:00Z","message":{"role":"user","content":[{"type":"text","text":"opened new repo, let's explore"}]}}
+{"type":"assistant","sessionId":"check-point-poisoned-project-config","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-18T10:15:10Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"p1","name":"Read","input":{"file_path":"README.md"}}]}}

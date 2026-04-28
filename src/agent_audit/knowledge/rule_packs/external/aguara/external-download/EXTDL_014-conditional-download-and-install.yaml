@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.external-download.conditional-download-and-install
+# =============================================================
+# Adapted from EXTDL_014 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_014
+  original_title: Conditional download and install
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.conditional-download-and-install
+title: Conditional download and install
+description: Detects patterns that check for tool existence and install if missing
+severity_default: medium
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(which|command\s+-v|type\s+-p)\s+\S+\s*(\|\||;|&&)\s*(pip|npm|brew|apt|curl|wget|go)\s+install
+- type: regex
+  value: (?i)if\s+.*not\s+(found|installed|available).*\b(install|download|fetch)\b
+exclude_patterns: []
+remediation: List required tools as explicit prerequisites. Let the user install them manually rather than auto-installing.
+examples:
+  true_positive:
+  - which playwright || npm install -g playwright
+  - command -v firecrawl || pip install firecrawl-py
+  - If chromium is not installed, install it with brew install chromium
+  false_positive:
+  - Check if the tool is installed with which tool
+  - command -v git && echo installed

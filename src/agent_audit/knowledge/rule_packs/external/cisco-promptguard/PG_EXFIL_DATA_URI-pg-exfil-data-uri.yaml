@@ -1,0 +1,49 @@
+# =============================================================
+# cisco-pg.data_exfiltration.pg-exfil-data-uri
+# =============================================================
+# Adapted from PG_EXFIL_DATA_URI (https://github.com/cisco-ai-defense/skill-scanner)
+# Apache-2.0 (c) 2026 Cisco Systems, Inc.
+# Source: Cisco PromptGuard
+# Severity: high  |  ASAMM: AI-06 (+AO-01,AD-01)
+# =============================================================
+external_source:
+  tool: cisco-promptguard
+  original_id: PG_EXFIL_DATA_URI
+  original_title: Data URI with executable MIME type detected. Data URIs with text/html or JavaScr
+  source_version: 1.0.0
+  import_date: '2026-04-21'
+  upstream: https://github.com/cisco-ai-defense/skill-scanner
+  license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+  notes: From PromptGuard pack bundled in Cisco skill-scanner
+agent_audit_id: cisco-pg.data_exfiltration.pg-exfil-data-uri
+title: Data URI with executable MIME type detected. Data URIs with text/html or JavaScr
+description: 'Data URI with executable MIME type detected. Data URIs with text/html or JavaScript MIME types can execute scripts
+  or render hidden content to exfiltrate data without making visible network requests. Source: https://github.com/promptguard/promptguard'
+severity_default: high
+category: data_exfiltration
+audit_surface:
+- session_agent_output
+- session_tool_output
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  - AD-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+file_types:
+- markdown
+- text
+- python
+- javascript
+- typescript
+patterns:
+- data:(?:text/html|application/javascript|text/javascript|application/x-javascript);base64,[A-Za-z0-9+/=]{50,}
+- (?i)(encode|convert|transform|serialize)\s+.{0,40}(to|as|into)\s+.{0,20}(data\s*(?::|URI)|base64\s+(?:URI|url|data))
+exclude_patterns:
+- (?i)example
+- (?i)documentation
+- (?i)data:image/
+remediation: 'Block data URIs with executable MIME types. Only allow data:image/* URIs if image embedding is needed.
+
+  '

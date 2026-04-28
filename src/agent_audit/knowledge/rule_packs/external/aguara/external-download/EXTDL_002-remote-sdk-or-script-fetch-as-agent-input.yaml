@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.external-download.remote-sdk-or-script-fetch-as-agent-input
+# =============================================================
+# Adapted from EXTDL_002 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_002
+  original_title: Remote SDK or script fetch as agent input
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.remote-sdk-or-script-fetch-as-agent-input
+title: Remote SDK or script fetch as agent input
+description: Detects fetching remote documentation or code to load as agent context
+severity_default: medium
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)(WebFetch|fetch|curl|wget)\s.{0,20}(load|read|retrieve|get)\s
+- type: regex
+  value: https?://[^\s]+\.(md|txt|yaml|yml|json)\b
+exclude_patterns: []
+remediation: Bundle required files locally instead of fetching at runtime. If remote fetch is needed, pin to a specific commit
+  SHA.
+examples:
+  true_positive:
+  - Use WebFetch to load https://raw.githubusercontent.com/org/sdk/main/README.md
+  - fetch and read https://example.com/instructions.yaml
+  false_positive:
+  - See the README.md file in the project root
+  - Edit the config.yaml to change settings

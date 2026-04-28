@@ -1,0 +1,48 @@
+# =============================================================
+# aguara.external-download.mcp-server-auto-registration
+# =============================================================
+# Adapted from EXTDL_006 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_006
+  original_title: MCP server auto-registration
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.mcp-server-auto-registration
+title: MCP server auto-registration
+description: Detects automatic registration of MCP servers into agent configuration
+severity_default: high
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)claude\s+mcp\s+add\s+
+- type: regex
+  value: (?i)mcp\s+(add|install|register)\s+.{0,40}(npx|node|python|server)
+exclude_patterns: []
+remediation: Manually review and register MCP servers. Verify the package source and pin to a specific version before adding.
+examples:
+  true_positive:
+  - claude mcp add agentation -- npx agentation-mcp server
+  - claude mcp add my-server -- python server.py
+  false_positive:
+  - The MCP protocol allows servers to provide tools

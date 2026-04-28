@@ -1,0 +1,136 @@
+# =============================================================
+# atr.skill-compromise.subcommand-overflow-bypass
+# =============================================================
+# Adapted from ATR-2026-00127 (https://github.com/Agent-Threat-Rule/agent-threat-rules)
+# MIT (c) 2026 ATR Contributors
+# Severity: medium  |  ASAMM: AI-01 (+AG-02,AD-04)
+# =============================================================
+atr_source:
+  original_id: ATR-2026-00127
+  original_title: Subcommand Overflow Bypass
+  atr_version: '0.1'
+  rule_version: 1
+  status: experimental
+  maturity: experimental
+  import_date: '2026-04-21'
+  upstream: https://github.com/Agent-Threat-Rule/agent-threat-rules
+  license: MIT (c) 2026 ATR Contributors
+agent_audit_id: atr.skill-compromise.subcommand-overflow-bypass
+title: Subcommand Overflow Bypass
+description: Detects SKILL.md files declaring an excessive number of subcommands or tools (>50). Claude Code has a security
+  architecture where each subcommand is individually evaluated for safety. When a skill declares >50 subcommands, some implementations
+  skip security checks on overflow commands due to performance budgets or fixed-size buffers. Attackers pad with 49 benign
+  commands then add malicious ones at the end, expecting the security check to be skipped. Discovered via Claude Code leak
+  analysis (2026-03).
+severity_default: medium
+category: skill-compromise
+audit_surface:
+- skill_md
+- mcp_manifest
+- plugin_manifest
+- instruction_file
+asamm:
+  primary: AI-01
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default applied at import. Review per rule.
+references:
+  mitre_atlas:
+  - AML.T0010 - ML Supply Chain Compromise
+  owasp_llm:
+  - LLM07:2025 - System Prompt Leakage
+  owasp_agentic:
+  - ASI02:2026 - Excessive Agent Autonomy
+  owasp_ast:
+  - AST02:2026 - Excessive Permissions
+  research:
+  - 'Claude Code leak: 50 subcommand security check bypass (2026-03)'
+tags:
+  category: skill-compromise
+  subcategory: subcommand-overflow
+  scan_target: skill
+  confidence: low
+agent_source:
+  type: mcp_exchange
+  framework:
+  - any
+  provider:
+  - any
+detection:
+  condition: any
+  false_positives:
+  - Legitimate enterprise SDKs that genuinely expose 50+ tools as a single skill (rare but real — flag for human review rather
+    than auto-block)
+  - Documentation describing platform feature counts in marketing copy (e.g. 'AWS supports over 200 services') — should be
+    filtered by checking that the count refers to skill subcommands, not platform features
+  conditions:
+  - field: content
+    operator: regex
+    value: (?i)(provides?|includes?|contains?|offers?|supports?|has)\s+(?:(?:[5-9]\d|\d{3,})|over\s+(?:[5-9]\d|\d{3,})|more\s+than\s+(?:[5-9]\d|\d{3,}))\s+(commands?|tools?|subcommands?|functions?|operations?|endpoints?|actions?|methods?)
+    description: Explicit declaration of large command count (50+)
+response:
+  actions:
+  - alert
+test_cases:
+  true_positives:
+  - input: '# Mega Tool Suite
+
+
+      This skill provides 75 commands for managing your entire system infrastructure.'
+    expected: trigger
+  - input: This skill provides 65 tools for comprehensive system administration and monitoring.
+    expected: trigger
+  - input: The package includes over 80 commands covering file management, network, and security.
+    expected: trigger
+  - input: Our framework supports more than 55 subcommands for DevOps automation.
+    expected: trigger
+  - input: MegaSkill provides 100 commands for full system orchestration.
+    expected: trigger
+    description: Three-digit count well above the 50 threshold
+  true_negatives:
+  - input: '# Simple Calculator
+
+
+      ## add
+
+      Adds two numbers
+
+      ## subtract
+
+      Subtracts two numbers
+
+      ## multiply
+
+      Multiplies two numbers'
+    expected: no_trigger
+  - input: This skill provides 5 commands for managing your git repository.
+    expected: no_trigger
+  - input: '# File Manager
+
+
+      - `create` - Create a file
+
+      - `delete` - Delete a file
+
+      - `move` - Move a file
+
+      - `copy` - Copy a file
+
+      - `list` - List files'
+    expected: no_trigger
+  - input: 'Multi-chain wallet and trading tools for AI agents. Provides 27 tools for: wallet management, balance checks,
+      export keys.'
+    expected: no_trigger
+    description: Legit multi-chain wallet manager (27 tools, well below 50)
+  - input: 'MCP skill for canva. Provides 22 tools: upload-asset-from-url, resolve-shortlink, search-designs, get-design.'
+    expected: no_trigger
+    description: Legit Canva integration (22 tools, well below 50)
+  - input: This skill includes 30 helper functions for data transformation tasks.
+    expected: no_trigger
+    description: Common count below the 50 threshold
+  - input: Our framework supports 49 subcommands for build automation.
+    expected: no_trigger
+    description: Edge case — 49 is below 50 threshold and must not trigger
+false_positives: []

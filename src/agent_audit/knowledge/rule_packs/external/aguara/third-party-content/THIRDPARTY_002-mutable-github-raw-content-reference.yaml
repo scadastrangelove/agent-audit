@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.third-party-content.mutable-github-raw-content-reference
+# =============================================================
+# Adapted from THIRDPARTY_002 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AD-01 (+AI-01,AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: THIRDPARTY_002
+  original_title: Mutable GitHub raw content reference
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.third-party-content.mutable-github-raw-content-reference
+title: Mutable GitHub raw content reference
+description: Detects references to raw.githubusercontent.com on mutable branches like main/master
+severity_default: low
+category: third-party-content
+audit_surface:
+- session_tool_output
+- session_retrieved_content
+asamm:
+  primary: AD-01
+  secondary:
+  - AI-01
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)raw\.githubusercontent\.com/[^/]+/[^/]+/(main|master|dev|develop)/
+- type: regex
+  value: (?i)github\.com/[^/]+/[^/]+/blob/(main|master|dev|develop)/[^\s]+
+exclude_patterns: []
+remediation: Reference a specific commit SHA or tagged release instead of a mutable branch name like main or master.
+examples:
+  true_positive:
+  - Fetch from https://raw.githubusercontent.com/org/repo/main/config.yaml
+  - See https://github.com/org/repo/blob/master/rules.md
+  false_positive:
+  - https://raw.githubusercontent.com/org/repo/v1.2.3/config.yaml
+  - https://github.com/org/repo/blob/abc1234/file.md

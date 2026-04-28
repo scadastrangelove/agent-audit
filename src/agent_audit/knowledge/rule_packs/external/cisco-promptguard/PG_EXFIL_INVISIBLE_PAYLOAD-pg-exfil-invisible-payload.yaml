@@ -1,0 +1,48 @@
+# =============================================================
+# cisco-pg.data_exfiltration.pg-exfil-invisible-payload
+# =============================================================
+# Adapted from PG_EXFIL_INVISIBLE_PAYLOAD (https://github.com/cisco-ai-defense/skill-scanner)
+# Apache-2.0 (c) 2026 Cisco Systems, Inc.
+# Source: Cisco PromptGuard
+# Severity: critical  |  ASAMM: AI-06 (+AO-01,AD-01)
+# =============================================================
+external_source:
+  tool: cisco-promptguard
+  original_id: PG_EXFIL_INVISIBLE_PAYLOAD
+  original_title: Instructions to use invisible characters or steganographic encoding to hide exfi
+  source_version: 1.0.0
+  import_date: '2026-04-21'
+  upstream: https://github.com/cisco-ai-defense/skill-scanner
+  license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+  notes: From PromptGuard pack bundled in Cisco skill-scanner
+agent_audit_id: cisco-pg.data_exfiltration.pg-exfil-invisible-payload
+title: Instructions to use invisible characters or steganographic encoding to hide exfi
+description: 'Instructions to use invisible characters or steganographic encoding to hide exfiltrated data. This technique
+  uses zero-width Unicode characters, whitespace encoding, or HTML comments to create covert data channels invisible to human
+  reviewers. Source: https://github.com/promptguard/promptguard'
+severity_default: critical
+category: data_exfiltration
+audit_surface:
+- session_agent_output
+- session_tool_output
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  - AD-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+file_types:
+- markdown
+- text
+- python
+- javascript
+- typescript
+patterns:
+- (?i)(hide|conceal|obscure|mask|cloak|disguise|camouflage|make\s+invisible)\s+.{0,60}(data|exfil|secret|key|token|password|context|output|response|payload|content)\s+.{0,40}(in|within|inside|using|via|through)\s+.{0,40}(whitespace|zero[-
+  ]?width|invisible|hidden|unicode|steganograph|comment)
+- (?i)(use|embed|encode|place|insert)\s+.{0,40}(zero[- ]?width|invisible|hidden|unicode)\s+.{0,40}(character|char|text|encoding)\s+.{0,40}(to|for)\s+.{0,40}(transmit|send|exfil|leak|smuggle|extract|hide)
+exclude_patterns: []
+remediation: 'Remove all steganographic encoding instructions. Implement zero-width character stripping on skill output.
+
+  '

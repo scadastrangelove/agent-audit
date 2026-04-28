@@ -1,0 +1,47 @@
+# =============================================================
+# aguara.external-download.go-install-from-remote
+# =============================================================
+# Adapted from EXTDL_010 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_010
+  original_title: go install from remote
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.go-install-from-remote
+title: go install from remote
+description: Detects go install fetching and compiling arbitrary Go packages
+severity_default: low
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)go\s+install\s+[a-z]+[./]\S+@
+exclude_patterns: []
+remediation: Pin to a specific version tag (e.g., @v1.2.3) instead of @latest. Verify the module with go mod verify.
+examples:
+  true_positive:
+  - go install github.com/anthropics/claude-code@latest
+  - go install golang.org/x/tools/cmd/goimports@latest
+  false_positive:
+  - go install ./cmd/myapp
+  - go build -o myapp

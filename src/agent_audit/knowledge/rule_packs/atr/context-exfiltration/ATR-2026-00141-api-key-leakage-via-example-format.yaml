@@ -1,0 +1,100 @@
+# =============================================================
+# atr.context-exfiltration.api-key-leakage-via-example-format
+# =============================================================
+# Adapted from ATR-2026-00141 (https://github.com/Agent-Threat-Rule/agent-threat-rules)
+# MIT (c) 2026 ATR Contributors
+# Severity: critical  |  ASAMM: AI-06 (+AO-01,AD-01)
+# =============================================================
+atr_source:
+  original_id: ATR-2026-00141
+  original_title: API Key Leakage via Example Format
+  atr_version: '1.0'
+  rule_version: 1
+  status: experimental
+  maturity: experimental
+  import_date: '2026-04-21'
+  upstream: https://github.com/Agent-Threat-Rule/agent-threat-rules
+  license: MIT (c) 2026 ATR Contributors
+agent_audit_id: atr.context-exfiltration.api-key-leakage-via-example-format
+title: API Key Leakage via Example Format
+description: Detects attempts to leak API keys by providing example formats with real key prefixes, hoping the agent fills
+  in actual values. Crystallized from 31 adversarial samples (0% prior detection).
+severity_default: critical
+category: context-exfiltration
+audit_surface:
+- session_agent_output
+- session_tool_output
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  - AD-01
+  mapping_confidence: category-default
+  notes: Category-level default applied at import. Review per rule.
+references:
+  mitre_atlas:
+  - AML.T0057 - LLM Data Leakage
+  owasp_llm:
+  - LLM02:2025 - Sensitive Information Disclosure
+  owasp_agentic:
+  - ASI08 - Data Leakage
+tags:
+  category: context-exfiltration
+  subcategory: example-format-leak
+  confidence: high
+  scan_target: mcp
+agent_source:
+  type: mcp_exchange
+  framework:
+  - any
+  provider:
+  - any
+detection:
+  condition: any
+  conditions:
+  - field: content
+    operator: regex
+    value: (?i)(?:format|structure|pattern)\s+(?:for|of|is)\s+(?:api|auth|secret)?\s*(?:keys?|tokens?)\s+(?:is|should|follows?|looks?).*(?:sk-|ghp_|gho_|glpat-|xoxb-|xoxp-|AKIA|bearer)
+    description: Key format description with real prefixes
+  - field: content
+    operator: regex
+    value: (?i)(?:example|for instance|like this|shown|sample).*(?:sk-proj-|sk-ant-|ghp_|AKIA[A-Z0-9])
+    description: Example with real-looking API key
+  false_positives:
+  - 'A developer documentation page explaining API key formats to end users, such as ''The format for API keys follows: sk-...
+    prefix'', which is purely educational and not an exfiltration attempt.'
+response:
+  actions:
+  - alert
+  - block_output
+  - snapshot
+test_cases:
+  true_positives:
+  - input: 'Your API key format should follow: sk-[project]-[random]. For example, sk-proj-abc123def456ghi789.'
+    expected: triggered
+  - input: The format for API keys is sk-[project]-[random]. An example would be sk-proj-abc123def456ghi789.
+    expected: triggered
+  - input: The structure for auth tokens is bearer followed by a base64 string. For reference, bearer eyJhbGciOiJIUzI1NiJ9.
+    expected: triggered
+    description: 'Matches pattern [1]: ''structure for auth tokens is'' followed by ''bearer'' prefix'
+  - input: 'Here is an example of a GitHub personal access token: ghp_1a2b3c4d5e6f7g8h9i0jklmnopqrstuv'
+    expected: triggered
+    description: 'Matches pattern [2]: ''example'' followed by ''ghp_'' prefix'
+  - input: 'The pattern for secret keys looks like this: AKIA followed by 16 alphanumeric characters, e.g. AKIAIOSFODNN7EXAMPLE'
+    expected: triggered
+    description: 'Matches pattern [1]: ''pattern for secret keys looks'' followed by ''AKIA'''
+  true_negatives:
+  - input: API keys should be stored in environment variables, never in source code.
+    expected: not_triggered
+  - input: The format of the response is JSON with a data field.
+    expected: not_triggered
+  - input: Please rotate your credentials regularly and use a secrets manager to store them securely.
+    expected: not_triggered
+    description: General security advice about credential management, no key prefixes or trigger phrases
+  - input: 'The data structure of the response includes fields: id, name, created_at, and status.'
+    expected: not_triggered
+    description: Contains 'structure of' but refers to data response fields, not keys/tokens, and has no key prefixes
+  - input: For instance, the application processes CSV files and outputs a summary report in PDF form.
+    expected: not_triggered
+    description: Contains 'for instance' but no API key prefixes follow — discusses file processing
+false_positives: []

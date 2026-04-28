@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.ssrf-cloud.localhost-bypass
+# =============================================================
+# Adapted from SSRF_006 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-03 (+AI-06,AO-01)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SSRF_006
+  original_title: Localhost bypass
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.ssrf-cloud.localhost-bypass
+title: Localhost bypass
+description: Detects alternative representations of localhost used to bypass SSRF filters
+severity_default: high
+category: ssrf-cloud
+audit_surface:
+- instruction_file
+- skill_md
+- session_tool_call
+asamm:
+  primary: AI-03
+  secondary:
+  - AI-06
+  - AO-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(https?://|fetch|curl|wget|request)\s*["'(]?https?://(0\.0\.0\.0|\[::1\]|0177\.0\.0\.1|2130706433|0x7f000001|127\.0\.0\.1:)
+- type: regex
+  value: (?i)https?://(0\.0\.0\.0|\[::1\]|0177\.0+\.0+\.0*1|2130706433)
+exclude_patterns: []
+remediation: Resolve and normalize URLs before validation. Reject requests to loopback addresses in all representations (decimal,
+  hex, octal).
+examples:
+  true_positive:
+  - curl http://0.0.0.0:8080/admin
+  - fetch('http://[::1]:3000/secret')
+  - http://2130706433/admin
+  false_positive:
+  - Listen on 0.0.0.0 to accept all connections

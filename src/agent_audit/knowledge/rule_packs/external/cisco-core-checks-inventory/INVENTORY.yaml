@@ -1,0 +1,53 @@
+source: cisco-ai-defense/skill-scanner core/python
+license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+rationale: Python structural checks that do not fit the regex-rule model. Listed for
+  manual evaluation and optional porting as native detectors.
+checks:
+- file: allowed_tools_checks.py
+  loc: 227
+  summary: Allowed-tools violation checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: analyzability_checks.py
+  loc: 120
+  summary: Analyzability score checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: archive_checks.py
+  loc: 27
+  summary: Archive extraction and Office threat checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: asset_checks.py
+  loc: 104
+  summary: Asset file scanning checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: binary_file_checks.py
+  loc: 119
+  summary: Binary and archive file detection checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: bytecode_checks.py
+  loc: 21
+  summary: Bytecode integrity checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: consistency_checks.py
+  loc: 104
+  summary: Manifest-behavior consistency checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: external_tool_checks.py
+  loc: 322
+  summary: External OSS tool checks (pdfid, oletools, confusable-homoglyphs).
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: file_inventory_checks.py
+  loc: 128
+  summary: File inventory analysis checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: hidden_file_checks.py
+  loc: 113
+  summary: Hidden file and __pycache__ detection checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: manifest_checks.py
+  loc: 144
+  summary: Manifest validation checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.
+- file: trigger_checks.py
+  loc: 261
+  summary: Trigger/description quality checks.
+  agent_audit_note: Structural/AST check, not a regex rule. Port as a dedicated detector.

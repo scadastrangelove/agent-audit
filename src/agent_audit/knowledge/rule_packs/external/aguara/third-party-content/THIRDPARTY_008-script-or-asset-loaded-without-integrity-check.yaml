@@ -1,0 +1,54 @@
+# =============================================================
+# aguara.third-party-content.script-or-asset-loaded-without-integrity-check
+# =============================================================
+# Adapted from THIRDPARTY_008 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AD-01 (+AI-01,AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: THIRDPARTY_008
+  original_title: Script or asset loaded without integrity check
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.third-party-content.script-or-asset-loaded-without-integrity-check
+title: Script or asset loaded without integrity check
+description: Detects scripts or assets loaded from CDNs or external sources without subresource integrity hashes
+severity_default: medium
+category: third-party-content
+audit_surface:
+- session_tool_output
+- session_retrieved_content
+asamm:
+  primary: AD-01
+  secondary:
+  - AI-01
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.html'
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)<script\s+src\s*=\s*["']https?://[^"']+["'][^>]*>
+- type: regex
+  value: (?i)(cdn|jsdelivr|unpkg|cdnjs|cloudflare)\.[a-z]+/.{0,80}@(latest|next|\*)
+- type: regex
+  value: (?i)load\s+.{0,20}(script|asset|library|module)\s+from\s+.{0,20}(cdn|external|remote).{0,30}without\s+.{0,10}(hash|integrity|sri|checksum)
+exclude_patterns:
+- type: regex
+  value: (?i)integrity\s*=\s*["']sha(256|384|512)-
+remediation: Add a Subresource Integrity (SRI) hash attribute (integrity="sha384-...") to all external script and link tags.
+examples:
+  true_positive:
+  - <script src="https://cdn.example.com/lib.js"></script>
+  - Load script from CDN without integrity hash verification
+  false_positive:
+  - <script src="https://cdn.example.com/lib.js" integrity="sha384-abc123"></script>
+  - Always add integrity hashes to external scripts

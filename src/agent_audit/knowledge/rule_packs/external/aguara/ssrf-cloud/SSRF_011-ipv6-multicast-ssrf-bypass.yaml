@@ -1,0 +1,52 @@
+# =============================================================
+# aguara.ssrf-cloud.ipv6-multicast-ssrf-bypass
+# =============================================================
+# Adapted from SSRF_011 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-03 (+AI-06,AO-01)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SSRF_011
+  original_title: IPv6 multicast SSRF bypass
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.ssrf-cloud.ipv6-multicast-ssrf-bypass
+title: IPv6 multicast SSRF bypass
+description: Detects IPv6 multicast addresses (ff00::/8) used in URLs to bypass SSRF IP blocklists and probe internal network
+  topology
+severity_default: high
+category: ssrf-cloud
+audit_surface:
+- instruction_file
+- skill_md
+- session_tool_call
+asamm:
+  primary: AI-03
+  secondary:
+  - AI-06
+  - AO-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)https?://\[?ff[0-9a-f]{2}:[0-9a-f:]+
+- type: regex
+  value: '(?i)(fetch|request|curl|wget|http\.get|axios)\s*\(?\s*["'']?[^"'']*\[?ff[0-9a-f]{2}:'
+exclude_patterns: []
+remediation: Block outbound requests to IPv6 multicast addresses (ff00::/8). Validate destination IPs are unicast and non-private
+  before connecting.
+examples:
+  true_positive:
+  - curl http://[ff02::1]:8080/admin
+  - fetch('http://[ff05::1]/config')
+  - http://[ff0e::1]:443/internal-api
+  false_positive:
+  - IPv6 multicast is used for neighbor discovery (RFC 4861)
+  - The ff02::1 address represents all-nodes on the link
+  - The ::ffff prefix denotes IPv4-mapped IPv6 addresses

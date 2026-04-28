@@ -1,0 +1,47 @@
+# Rule Pack Overrides
+#
+# Severity demotions and suppressions for rule-pack rules that produce too
+# much noise to be useful in developer-facing reports without reducing them
+# first. Applied by knowledge/rule_pack_loader.py at load time.
+#
+# Derived from the agent-audit grand-run evaluation (100 repos, 2026-04-21):
+# https://docs/ast-precision-plan.md covers the broader FP strategy.
+#
+# Each entry is:
+#   <agent_audit_id>:
+#     severity: <new severity>     # overrides severity_default
+#     reason: <why we demoted>
+#     evidence: <where noise shows up>
+
+rules:
+  # Grand-run #1 noisy rule: TOP-1 in 45/91 repos, 801 findings total across 78
+  # targets. Fires on any URL-download pattern in docs/READMEs/install
+  # instructions. In a skill-audit context, install-URL patterns are usually
+  # documentation, not a security control issue. Demoting to LOW so it does
+  # not dominate default `--min-severity medium` runs but stays available for
+  # signature-harvesting mode.
+  aguara.external-download.runtime-url-controls-agent-behavior:
+    severity: low
+    reason: "Grand-run showed TOP-1 in 45/91 repos; dominates operator experience without corresponding security value."
+    evidence: "801 findings across 78 targets; top-ranked noise in e.g. microsoft/generative-ai-for-beginners translations."
+
+  # Binary-download rule has the same character but fires on fewer repos.
+  # 56/74 findings on microsoft/generative-ai-for-beginners are this rule —
+  # it hits install-from-binary instructions in tutorials. Demote to LOW;
+  # a real agent-audit concern about binary install should come from the
+  # context (SKILL.md promising to execute arbitrary binaries), not from
+  # every mention in a tutorial.
+  aguara.external-download.binary-download-and-execute:
+    severity: low
+    reason: "Fires on install-from-binary documentation in tutorials, not behavioral."
+    evidence: "56/74 findings on microsoft/generative-ai-for-beginners."
+
+  # Grand-run #3 by hit count: 338 findings across 57 targets. The regex
+  # matches phrases like 'without confirmation', 'always run', 'auto-apply'
+  # in arbitrary prose, including instructional tone of voice. When it
+  # matters, our native asamm.AD-02.* detectors catch it structurally.
+  # Keep the rule available but demote severity.
+  atr.agent-manipulation.human-approval-fatigue-exploitation:
+    severity: low
+    reason: "Prose-tone matcher; native AD-02 detectors catch the real cases structurally."
+    evidence: "338 findings across 57 targets; top-1 in 9 repos that were otherwise clean."

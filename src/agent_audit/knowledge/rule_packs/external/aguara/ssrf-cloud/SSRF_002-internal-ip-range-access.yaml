@@ -1,0 +1,48 @@
+# =============================================================
+# aguara.ssrf-cloud.internal-ip-range-access
+# =============================================================
+# Adapted from SSRF_002 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-03 (+AI-06,AO-01)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SSRF_002
+  original_title: Internal IP range access
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.ssrf-cloud.internal-ip-range-access
+title: Internal IP range access
+description: Detects references to private/internal IP ranges in URL context
+severity_default: high
+category: ssrf-cloud
+audit_surface:
+- instruction_file
+- skill_md
+- session_tool_call
+asamm:
+  primary: AI-03
+  secondary:
+  - AI-06
+  - AO-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets: []
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)https?://(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3})[:/]
+exclude_patterns: []
+remediation: Validate and restrict outbound URLs against an allowlist of permitted hosts. Reject requests targeting RFC 1918
+  private IP ranges.
+examples:
+  true_positive:
+  - curl http://10.0.0.1:8080/admin
+  - fetch('http://192.168.1.1/config')
+  false_positive:
+  - The default gateway is 192.168.1.1
+  - Configure the server to listen on 10.0.0.1
+  - http://127.0.0.1:3000/sse

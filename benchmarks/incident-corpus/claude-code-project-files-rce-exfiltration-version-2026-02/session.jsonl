@@ -1,0 +1,1 @@
+{"type":"user","sessionId":"claude-code-project-files-rce-exfiltration-version-2026-02","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-18T11:15:00Z","message":{"role":"user","content":[{"type":"text","text":"hello"}]}}

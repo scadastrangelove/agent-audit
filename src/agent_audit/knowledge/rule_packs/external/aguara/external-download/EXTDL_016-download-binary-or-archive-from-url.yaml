@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.external-download.download-binary-or-archive-from-url
+# =============================================================
+# Adapted from EXTDL_016 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_016
+  original_title: Download binary or archive from URL
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.download-binary-or-archive-from-url
+title: Download binary or archive from URL
+description: Detects downloading binary, archive, or installer files from remote URLs
+severity_default: medium
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(curl|wget|download|fetch)\s+.{0,60}https?://\S+\.(zip|tar\.gz|tgz|tar\.bz2|exe|msi|dmg|deb|rpm|pkg|AppImage|snap)\b
+- type: regex
+  value: (?i)https?://\S+/(releases|download|dist|bin)/\S+\s+.{0,20}(&&|;|\|)\s*(chmod|tar|unzip|install|sudo)
+exclude_patterns: []
+remediation: Use a package manager when possible. If direct download is needed, verify SHA256 checksums before extracting.
+examples:
+  true_positive:
+  - curl -L https://github.com/org/repo/releases/download/v1.0/tool.tar.gz
+  - wget https://example.com/dist/installer.deb
+  - Download https://releases.example.com/bin/v1.0/tool.zip and extract
+  false_positive:
+  - See https://example.com/docs/guide.html for documentation
+  - Visit https://github.com/org/repo/releases for more info

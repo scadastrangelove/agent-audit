@@ -1,0 +1,42 @@
+# =============================================================
+# cisco-pg.pii_exposure.pg-pii-card-harvesting
+# =============================================================
+# Adapted from PG_PII_CARD_HARVESTING (https://github.com/cisco-ai-defense/skill-scanner)
+# Apache-2.0 (c) 2026 Cisco Systems, Inc.
+# Source: Cisco PromptGuard
+# Severity: critical  |  ASAMM: AI-06 (+AO-01)
+# =============================================================
+external_source:
+  tool: cisco-promptguard
+  original_id: PG_PII_CARD_HARVESTING
+  original_title: Skill instructions to collect payment card details. This is a strong indicator o
+  source_version: 1.0.0
+  import_date: '2026-04-21'
+  upstream: https://github.com/cisco-ai-defense/skill-scanner
+  license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+  notes: From PromptGuard pack bundled in Cisco skill-scanner
+agent_audit_id: cisco-pg.pii_exposure.pg-pii-card-harvesting
+title: Skill instructions to collect payment card details. This is a strong indicator o
+description: 'Skill instructions to collect payment card details. This is a strong indicator of financial fraud or credential
+  harvesting. Payment processing should use PCI-compliant tokenization, not raw card collection. Source: https://github.com/promptguard/promptguard'
+severity_default: critical
+category: pii_exposure
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+file_types:
+- markdown
+- text
+patterns:
+- (?i)(collect|extract|harvest|gather|capture|log|record|store|save|ask|request|prompt|require)\s+.{0,40}(credit\s+card|debit\s+card|card\s+number|CVV|CVC|expir(y|ation)\s+date|billing\s+info)
+exclude_patterns: []
+remediation: 'Remove payment card collection instructions. Use PCI-compliant payment processors (Stripe, Square, etc.) instead
+  of collecting raw card data.
+
+  '

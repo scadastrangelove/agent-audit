@@ -1,0 +1,48 @@
+# =============================================================
+# cisco-pg.data_exfiltration.pg-exfil-html-tag
+# =============================================================
+# Adapted from PG_EXFIL_HTML_TAG (https://github.com/cisco-ai-defense/skill-scanner)
+# Apache-2.0 (c) 2026 Cisco Systems, Inc.
+# Source: Cisco PromptGuard
+# Severity: high  |  ASAMM: AI-06 (+AO-01,AD-01)
+# =============================================================
+external_source:
+  tool: cisco-promptguard
+  original_id: PG_EXFIL_HTML_TAG
+  original_title: HTML tag injection with dynamic URL construction. Embeds sensitive data in img/s
+  source_version: 1.0.0
+  import_date: '2026-04-21'
+  upstream: https://github.com/cisco-ai-defense/skill-scanner
+  license: Apache-2.0 (c) 2026 Cisco Systems, Inc.
+  notes: From PromptGuard pack bundled in Cisco skill-scanner
+agent_audit_id: cisco-pg.data_exfiltration.pg-exfil-html-tag
+title: HTML tag injection with dynamic URL construction. Embeds sensitive data in img/s
+description: 'HTML tag injection with dynamic URL construction. Embeds sensitive data in img/script/iframe src attributes
+  to exfiltrate via HTTP requests triggered when the content is rendered. Source: https://github.com/promptguard/promptguard'
+severity_default: high
+category: data_exfiltration
+audit_surface:
+- session_agent_output
+- session_tool_output
+asamm:
+  primary: AI-06
+  secondary:
+  - AO-01
+  - AD-01
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+file_types:
+- markdown
+- text
+- javascript
+- typescript
+patterns:
+- <img\s+[^>]*src\s*=\s*["']https?://[^"']{0,200}\{\{?[^}]+\}\}?[^"']*["'][^>]*/?>|<img\s+[^>]*src\s*=\s*["']https?://[^"']{0,200}\$\{[^}]+\}[^"']*["'][^>]*/?>
+- <(?:script|iframe|embed|object)\s+[^>]*src\s*=\s*["']https?://[^"']{0,300}["'][^>]*>
+exclude_patterns:
+- (?i)example
+- (?i)documentation
+- (?i)tutorial
+remediation: 'Strip or escape HTML tags in skill content. Block skills that inject raw HTML with external resource references.
+
+  '

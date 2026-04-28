@@ -1,0 +1,2 @@
+{"type":"user","sessionId":"railway-drizzle-force","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-18T10:05:00Z","message":{"role":"user","content":[{"type":"text","text":"sync schema to the db"}]}}
+{"type":"assistant","sessionId":"railway-drizzle-force","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-18T10:05:10Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"d1","name":"Bash","input":{"command":"drizzle-kit push --force"}}]}}

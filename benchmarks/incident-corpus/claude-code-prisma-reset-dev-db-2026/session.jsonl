@@ -1,0 +1,2 @@
+{"type":"user","sessionId":"claude-code-prisma-reset-dev-db-2026","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-18T10:30:00Z","message":{"role":"user","content":[{"type":"text","text":"reset the dev db"}]}}
+{"type":"assistant","sessionId":"claude-code-prisma-reset-dev-db-2026","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-18T10:30:10Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"p1","name":"Bash","input":{"command":"prisma migrate reset --force"}}]}}

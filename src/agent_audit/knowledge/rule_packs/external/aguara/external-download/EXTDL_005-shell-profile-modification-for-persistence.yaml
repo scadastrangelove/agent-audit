@@ -1,0 +1,55 @@
+# =============================================================
+# aguara.external-download.shell-profile-modification-for-persistence
+# =============================================================
+# Adapted from EXTDL_005 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_005
+  original_title: Shell profile modification for persistence
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.shell-profile-modification-for-persistence
+title: Shell profile modification for persistence
+description: Detects instructions to modify shell config files for environment persistence
+severity_default: medium
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(echo|cat|append|add|write|>>)\s.{0,60}~/?\.?(bashrc|bash_profile|zshrc|zprofile|profile|zshenv)
+- type: regex
+  value: (?i)(export\s+[A-Z_]+=).{0,80}(>>\s*~/?\.?(bashrc|zshrc|profile))
+- type: regex
+  value: (?i)(modify|edit|append|write|update|insert|inject|persist|backdoor).{0,40}~/?\.?(bashrc|bash_profile|zshrc|zprofile|profile|zshenv)
+- type: regex
+  value: (?i)>>\s*~/?\.?(bashrc|bash_profile|zshrc|zprofile|profile|zshenv)
+exclude_patterns: []
+remediation: Use project-local .env files or direnv instead of modifying global shell profiles.
+examples:
+  true_positive:
+  - echo 'export FIRECRAWL_API_KEY=xxx' >> ~/.zshrc
+  - 'Add the following to your ~/.bashrc: export API_KEY=your-key'
+  - Modifying ~/.bashrc to add persistence
+  - '>> ~/.bash_profile'
+  false_positive:
+  - Check your ~/.bashrc for existing PATH configuration
+  - The ~/.zshrc file is loaded when a new terminal opens

@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.external-download.npx-auto-install-without-confirmation
+# =============================================================
+# Adapted from EXTDL_003 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AG-02 (+AI-03,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXTDL_003
+  original_title: npx auto-install without confirmation
+  source_version: HEAD 2026-04-21
+  import_date: '2026-04-21'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.external-download.npx-auto-install-without-confirmation
+title: npx auto-install without confirmation
+description: Detects npx with -y flag that bypasses user confirmation for package installation
+severity_default: low
+category: external-download
+audit_surface:
+- instruction_file
+- skill_md
+asamm:
+  primary: AG-02
+  secondary:
+  - AI-03
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)npx\s+[^\n]*\s-[a-z]*y
+- type: regex
+  value: (?i)npx\s+-y\s+
+exclude_patterns: []
+remediation: Remove the -y flag to require user confirmation before installing packages. Pin to a specific version.
+examples:
+  true_positive:
+  - npx skills add owner/repo@skill -g -y
+  - npx -y some-package run
+  false_positive:
+  - npx create-react-app my-app
+  - npx playwright test
