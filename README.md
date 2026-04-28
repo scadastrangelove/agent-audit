@@ -43,65 +43,12 @@ runner, normalizer, and post-analysis layer around multiple detector
 families, with extra native logic for agent-specific control gaps that
 generic scanners usually miss.
 
-## Signature sources
+## Modes at a glance
 
-`agent-audit` currently combines:
-
-- **Native ASAMM detectors** for agent-specific structural gaps such as
-  broad external action without approval, autonomous loops with writes, and
-  persistent identity rewrite.
-- **ATR (Agent Threat Rules)** for prompt injection, agent manipulation,
-  excessive autonomy, skill compromise, tool poisoning, context
-  exfiltration, and related agent-centric attack patterns.
-- **Aguara-derived rules** for external download/install trust-boundary
-  expansion, third-party content ingestion, SSRF-cloud, and related remote
-  input / remote execution surfaces.
-- **Cisco PromptGuard-style rules** for PII harvesting, secret patterns,
-  markdown/data-URI exfiltration, and related prompt/output abuse patterns.
-
-The bundled counts are currently:
-
-- `233` ATR rules
-- `37` Aguara-derived rules
-- `26` Cisco PromptGuard-derived rules
-- native ASAMM detectors and project-specific post-processing on top
-
-See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for provenance and
-license details.
-
-## Why not just run one upstream pack
-
-Using multiple sources matters, but the bigger value is what `agent-audit`
-does *around* them:
-
-- **Surface-aware application.** `scan-project` does not blindly regex every
-  file. It classifies instruction surfaces such as `SKILL.md`, `AGENTS.md`,
-  plugin manifests, MCP manifests, tool descriptions, and task YAMLs, then
-  applies only the relevant rules.
-- **Field-aware filtering.** Rules meant for live session events are not
-  blindly reused on flat repo text. This removes a large false-positive
-  class that appears when session-oriented packs are applied out of context.
-- **Native agent-specific logic.** Some important problems are absence-based
-  or structural, not just lexical. "Broad action without approval" and
-  "persistent identity rewrite" are examples where native detectors add
-  signal that raw imported signatures do not provide well.
-- **Canonical clustering and deduplication.** Different packs often describe
-  different facets of the same dangerous surface. `agent-audit` clusters raw
-  rule hits into artifact-backed issue instances instead of treating every
-  firing as a separate security fact.
-- **Collection-scale aggregation.** When one replicated skill template fires
-  hundreds of times, the tool can collapse that into a collection-scale
-  pattern instead of flooding the operator with near-identical findings.
-- **Severity normalization and reporting.** Imported severities and native
-  detector outputs are normalized into one reporting layer, then exposed in
-  raw, clustered, and aggregate views.
-- **Optional verification.** Findings can be re-checked with external or
-  local LLM backends, which is useful when raw pattern matches are noisy or
-  context-sensitive.
-
-In short: upstream signatures provide ingredients; `agent-audit` provides
-the agent-repo-specific execution model, filtering, clustering, and review
-workflow needed to make those ingredients operational.
+| Mode | Input | Output | Best for |
+| --- | --- | --- | --- |
+| `scan` | Local agent home, configs, hooks, session logs | Verified-first forensic report bundle | Incident review, local environment audit, suspicious agent runs |
+| `scan-project` | One repo or a corpus of repos with instruction surfaces | Project findings, clustered findings, security profile, collection-scale patterns | Pre-release repo audit, third-party repo triage, corpus research |
 
 ## Install
 
@@ -203,6 +150,18 @@ What you get:
 - `report-profiles.json`
 - collection-scale aggregation for repeated skill/template patterns
 
+Example output directory from `scan-project --output ./reports/project-scan`:
+
+```text
+reports/project-scan/
+  project-findings.json
+  project-findings.md
+  clustered-findings.json
+  security-profile.json
+  files-of-concern.json
+  report-profiles.json
+```
+
 ## Typical workflow
 
 For maintainers:
@@ -226,6 +185,66 @@ For research / corpora:
 1. Scan a directory of repos with `scan-project`.
 2. Keep raw, clustered, and aggregate outputs separate.
 3. Use `corpus-lab` for regression snapshots and stability checks.
+
+## Signature sources
+
+`agent-audit` currently combines:
+
+- **Native ASAMM detectors** for agent-specific structural gaps such as
+  broad external action without approval, autonomous loops with writes, and
+  persistent identity rewrite.
+- **ATR (Agent Threat Rules)** for prompt injection, agent manipulation,
+  excessive autonomy, skill compromise, tool poisoning, context
+  exfiltration, and related agent-centric attack patterns.
+- **Aguara-derived rules** for external download/install trust-boundary
+  expansion, third-party content ingestion, SSRF-cloud, and related remote
+  input / remote execution surfaces.
+- **Cisco PromptGuard-style rules** for PII harvesting, secret patterns,
+  markdown/data-URI exfiltration, and related prompt/output abuse patterns.
+
+The bundled counts are currently:
+
+- `233` ATR rules
+- `37` Aguara-derived rules
+- `26` Cisco PromptGuard-derived rules
+- native ASAMM detectors and project-specific post-processing on top
+
+See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for provenance and
+license details.
+
+## Why not just run one upstream pack
+
+Using multiple sources matters, but the bigger value is what `agent-audit`
+does *around* them:
+
+- **Surface-aware application.** `scan-project` does not blindly regex every
+  file. It classifies instruction surfaces such as `SKILL.md`, `AGENTS.md`,
+  plugin manifests, MCP manifests, tool descriptions, and task YAMLs, then
+  applies only the relevant rules.
+- **Field-aware filtering.** Rules meant for live session events are not
+  blindly reused on flat repo text. This removes a large false-positive
+  class that appears when session-oriented packs are applied out of context.
+- **Native agent-specific logic.** Some important problems are absence-based
+  or structural, not just lexical. "Broad action without approval" and
+  "persistent identity rewrite" are examples where native detectors add
+  signal that raw imported signatures do not provide well.
+- **Canonical clustering and deduplication.** Different packs often describe
+  different facets of the same dangerous surface. `agent-audit` clusters raw
+  rule hits into artifact-backed issue instances instead of treating every
+  firing as a separate security fact.
+- **Collection-scale aggregation.** When one replicated skill template fires
+  hundreds of times, the tool can collapse that into a collection-scale
+  pattern instead of flooding the operator with near-identical findings.
+- **Severity normalization and reporting.** Imported severities and native
+  detector outputs are normalized into one reporting layer, then exposed in
+  raw, clustered, and aggregate views.
+- **Optional verification.** Findings can be re-checked with external or
+  local LLM backends, which is useful when raw pattern matches are noisy or
+  context-sensitive.
+
+In short: upstream signatures provide ingredients; `agent-audit` provides
+the agent-repo-specific execution model, filtering, clustering, and review
+workflow needed to make those ingredients operational.
 
 No active defense — read-only analysis with consent prompts at every step.
 Generates ready-to-review config patches, but never applies them.
