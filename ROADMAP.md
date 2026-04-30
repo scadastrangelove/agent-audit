@@ -10,9 +10,10 @@ reducing signal bleed.
 
 ## Philosophy
 
-Статика — широкий невод, LLM — фильтр. Детекторы генерируют кандидатов,
-LLM-верификатор отфильтровывает их на основе контекста. Статические правила
-могут быть агрессивнее чем обычно в security tooling — LLM разгребёт.
+Static analysis is the wide net; the LLM is the filter. Detectors generate
+candidates, and the LLM verifier filters them using surrounding context.
+Static rules can therefore be more aggressive than usual in security tooling,
+because the verifier is expected to absorb part of the precision burden.
 
 ## Current backlog (post-v0.14.4)
 
@@ -149,43 +150,43 @@ See dedicated section below. Blocked on data-quality items above.
 Once intent-suppressor and cross-cohort aggregation land, findings
 will be clean enough to start computing L1/L2/L3.
 
-## Релизы
+## Releases
 
-### v0.1 — P0 MVP *(готово)*
+### v0.1 — P0 MVP *(done)*
 
-Discovery, парсеры Claude Code / Codex, 5 детекторов, consent-флоу,
-Markdown + JSON отчёты, transparent audit log.
+Discovery, Claude Code / Codex parsers, 5 detectors, consent flow,
+Markdown + JSON reports, transparent audit log.
 
-### v0.2 — Sub-agents + calibration *(готово)*
+### v0.2 — Sub-agents + calibration *(done)*
 
-- 3 новых детектора: AI-04.persistence-write, AD-02.out-of-cwd-write,
+- 3 new detectors: AI-04.persistence-write, AD-02.out-of-cwd-write,
   C2.private-key-exfil
-- Адаптивная severity в C3.autonomy-window-excess
-- Классификатор outbound в C2.credential-exfil-chain
+- Adaptive severity in C3.autonomy-window-excess
+- Outbound classifier in C2.credential-exfil-chain
 - Sub-agent lineage
 
-### v0.3 — Batch + Preflight + Honest errors *(готово)*
+### v0.3 — Batch + Preflight + Honest errors *(done)*
 
-- Batch verification (10 findings в одном prompt)
-- Preflight check с минимальным тестом
-- Honest error reporting из Claude CLI JSON body
-- Абстрактный VerifierBackend
+- Batch verification (10 findings in one prompt)
+- Preflight check with a minimal test
+- Honest error reporting from the Claude CLI JSON body
+- Abstract VerifierBackend
 
-### v0.4 — BYO key + Local LLMs + Proxy *(готово)*
+### v0.4 — BYO key + Local LLMs + Proxy *(done)*
 
-- AnthropicAPIBackend, OpenAICompatibleBackend — прямые HTTP
+- AnthropicAPIBackend, OpenAICompatibleBackend — direct HTTP
 - OpenRouter support, Ollama / LM Studio / vLLM / llama.cpp
-- --proxy и auto-detect из env
-- 2 детектора из orghound.db-wipe: AG-04.destructive-without-backup, AV-01.test-touches-prod
+- `--proxy` and auto-detect from env
+- 2 detectors from `orghound.db-wipe`: AG-04.destructive-without-backup, AV-01.test-touches-prod
 
-### v0.5 — ASAMM samples + Integrity review + Patches *(готово)*
+### v0.5 — ASAMM samples + Integrity review + Patches *(done)*
 
-- 5 новых детекторов из SecOps / claude-code-zhet / ouroboros samples
+- 5 new detectors from SecOps / claude-code-zhet / ouroboros samples
 - --mode conservative / standard / full
 - --integrity-review (second-pass self-check)
 - --patches (config fix generator)
 
-### v0.9.0 — Codex taint engine fix *(готово, текущий релиз)*
+### v0.9.0 — Codex taint engine fix *(done, current release)*
 
 Completes v0.8.2 Codex normalization work. v0.8.2 fixed detectors'
 tool_name checks but missed the deeper layer — `nlu/taint.py` taint
@@ -202,232 +203,233 @@ threshold, AI-06 internal helpers).
 Code parity preserved. Expected production impact: Codex structural
 findings from ~10 to ~30-40.
 
-### v0.8.2 — Codex tool normalization *(готово)*
+### v0.8.2 — Codex tool normalization *(done)*
 
 Canonical cross-agent tool names. Codex `exec_command`/`write_stdin`/
-`apply_patch`/`read_file` теперь maps на canonical `Bash`/`BashStdin`/
-`Patch`/`Read`. Ранее детекторы (destructive-backup, credential-exfil,
-persistence-write, out-of-cwd, confirmation-bypass) silently пропускали
-все Codex sessions потому что tool_name check не матчил.
+`apply_patch`/`read_file` now map to canonical `Bash`/`BashStdin`/
+`Patch`/`Read`. Previously the detectors (destructive-backup, credential-exfil,
+persistence-write, out-of-cwd, confirmation-bypass) silently missed
+all Codex sessions because the `tool_name` check did not match.
 
-10 детекторов пропатчены на canonical fallback. 4/4 Codex coverage
-smoke tests зелёные. Claude Code parity preserved.
+10 detectors were patched to use canonical fallback. 4/4 Codex coverage
+smoke tests are green. Claude Code parity preserved.
 
-### v0.8.1 — Project-type awareness *(готово)*
+### v0.8.1 — Project-type awareness *(done)*
 
 `.agent-audit.yaml` at project root — user declares project intent
 (`tags: [dast]`, trusted_targets, severity_overrides, suppress_rules,
-allowlist_writes). Plus auto-detection из CLAUDE.md/AGENTS.md keywords
-(DAST/EASM/pentest/red-team). Detectors применяют severity overrides
-и suppression через `scanner._apply_project_config()`.
+allowlist_writes). Plus auto-detection from CLAUDE.md/AGENTS.md keywords
+(DAST/EASM/pentest/red-team). Detectors apply severity overrides
+and suppressions via `scanner._apply_project_config()`.
 
-Default tag overrides покрывают известные false positive patterns:
+Default tag overrides cover known false-positive patterns:
 DAST projects downgrade `C3.autonomy-with-exfil-chain` → info
-(легитимный scan workflow), `AG-04.destructive-without-backup` → low.
+(legitimate scan workflow), `AG-04.destructive-without-backup` → low.
 
-### v0.8.0 — Session aggregation + real-data calibration *(готово)*
+### v0.8.0 — Session aggregation + real-data calibration *(done)*
 
-Первый из трёх v0.8 UX shifts + критичная калибровка по codex-cli
-verified данным.
+The first of three v0.8 UX shifts, plus critical calibration using
+codex-cli-verified data.
 
 **Session aggregation (MD report):**
-- **Sessions of concern** cards (3+ findings каждая) с severity rollup
-- **Rule clusters** внутри карточки
-- **Pattern groups** внутри cluster (evidence shape hash нормализует
+- **Sessions of concern** cards (3+ findings each) with severity rollup
+- **Rule clusters** inside each card
+- **Pattern groups** inside each cluster (the evidence shape hash normalizes
   /tmp/X, sprint numbers, PIDs, UUIDs)
-- **Quiet sessions** одной строкой каждая
-- **Config/environment** findings в отдельной секции
-- **Full flat list** сохранён в `<details>` appendix для search
-- JSON report без изменений (data fidelity)
+- **Quiet sessions** rendered one line each
+- **Config/environment** findings in a separate section
+- **Full flat list** preserved in a `<details>` appendix for search
+- JSON report unchanged (data fidelity)
 
-**Real-data калибровка (на 325 LLM-verified findings):**
-- **Claim detector "substantial tool activity" gate** — 91% FP rate у
-  `unverified-completion-claim` потому что claims подкреплены real
-  tool activity, но наши category-specific regex не матчат. Gate:
-  ≥5 prior tools → skip, ≥2 tools → downgrade 2 уровня, <2 → full.
-  Проекция на verified subset: **128/203 FPs eliminated, 0 TPs
+**Real-data calibration (325 LLM-verified findings):**
+- **Claim detector "substantial tool activity" gate** — a 91% FP rate in
+  `unverified-completion-claim`, because the claims were supported by real
+  tool activity while our category-specific regexes did not match it. Gate:
+  ≥5 prior tools → skip, ≥2 tools → downgrade by 2 levels, <2 → full.
+  Projection on the verified subset: **128/203 FPs eliminated, 0 TPs
   false-suppressed**.
-- **Poisoned-project-config** FP на `example.com` и URLs внутри MD
-  code fences. Fix: IANA docs TLDs в exclusion list + strip fenced
-  code blocks для .md файлов.
-- **`render_json` cwd/git_branch leak** — Codex parser v0.7.7 правильно
-  извлекал cwd из `session_meta.payload.cwd`, но reporter отбрасывал.
-  Фикс: все Session fields попадают в JSON output.
+- **Poisoned-project-config** FP on `example.com` and URLs inside Markdown
+  code fences. Fix: add IANA docs TLDs to the exclusion list and strip fenced
+  code blocks for `.md` files.
+- **`render_json` cwd/git_branch leak** — the Codex parser in v0.7.7 correctly
+  extracted `cwd` from `session_meta.payload.cwd`, but the reporter dropped it.
+  Fix: all Session fields now flow into JSON output.
 
-**Реальный impact:** 871-finding MD: top section 91 KB / 1778 строк
-vs 1.69 MB / 35935 строк flat (5% размера). Критические TPs видны
-на первом scroll.
+**Measured impact:** an 871-finding Markdown report now has a 91 KB / 1778-line
+top section versus 1.69 MB / 35935 lines in the flat layout (5% of the size).
+Critical TPs are visible on the first scroll.
 
 No rule IDs changed — still 27 total.
 
-Следующее: **v0.8.1** — project-type awareness (`.agent-audit.yaml`
-+ auto-detect по CLAUDE.md keywords). **v0.8.2** — Codex tool
-normalization (canonical_tool field для cross-agent detector
+Next: **v0.8.1** — project-type awareness (`.agent-audit.yaml`
++ auto-detect from CLAUDE.md keywords). **v0.8.2** — Codex tool
+normalization (a `canonical_tool` field for cross-agent detector
 compatibility).
 
-### v0.7.7 — Sonnet default + Codex fixes *(готово)*
+### v0.7.7 — Sonnet default + Codex fixes *(done)*
 
-Три бага в Codex coverage найдены при анализе 871-finding отчёта + perf win.
+Three Codex coverage bugs found while analyzing the 871-finding report,
+plus one performance win.
 
-- **Sonnet по умолчанию для Claude CLI backend** (2x faster, 3x cheaper
-  чем Opus на verify workload). Override: `--claude-model opus`.
-- **`unbounded-loop` polling whitelist** — `write_stdin(chars="")` это
-  semantic READ от tmux session, не повторяющееся действие. Убирает 3/6 FP.
-- **`dangerous-recommendation` skip на verifier JSON** — наш собственный
-  output прошлого verify run не должен триггерить advice detector.
-  Убирает ~3/5 FP.
-- **Codex parser теперь извлекает `cwd` из правильного места** —
+- **Sonnet as the default for the Claude CLI backend** (2x faster, 3x cheaper
+  than Opus on the verify workload). Override: `--claude-model opus`.
+- **`unbounded-loop` polling whitelist** — `write_stdin(chars="")` is a
+  semantic READ from the tmux session, not a repeated action. Removes 3/6 FP.
+- **`dangerous-recommendation` skip on verifier JSON** — our own output from
+  a previous verify run must not trigger the advice detector. Removes ~3/5 FP.
+- **Codex parser now extracts `cwd` from the correct location** —
   `session_meta.payload.cwd` (primary, line 1) + `turn_context.payload.cwd`
-  (per-turn fallback) + `exec_command.workdir` (last-resort). Раньше
-  искали на top level что не совпадало с реальной Codex schema. Плюс
-  `json.loads(..., strict=False)` для tolerance к raw control chars
-  внутри `user_instructions` strings. Это чинит
-  `AI-05.poisoned-project-config` на всех Codex сессиях.
+  (per-turn fallback) + `exec_command.workdir` (last-resort). Previously
+  we looked at the top level, which did not match the real Codex schema. Also
+  adds `json.loads(..., strict=False)` for tolerance to raw control chars
+  inside `user_instructions` strings. This fixes
+  `AI-05.poisoned-project-config` on all Codex sessions.
 
-Total: 27 rule IDs, без изменений.
+Total: 27 rule IDs, unchanged.
 
-### Уроки для v0.8 (не исполнены в v0.7.7)
+### Lessons for v0.8 (not implemented in v0.7.7)
 
-- Power-law findings distribution: 10 сессий = 95% findings. UX overhaul.
-- Project-type awareness (`.agent-audit.yaml`) для DAST/pentest workflow.
-- Codex tool-name normalization (все C2/C3/AG detectors заточены под
-  Claude Code event structure — на Codex пропускают сигнал).
+- Power-law findings distribution: 10 sessions = 95% of findings. UX overhaul.
+- Project-type awareness (`.agent-audit.yaml`) for DAST/pentest workflows.
+- Codex tool-name normalization (all C2/C3/AG detectors were shaped around
+  the Claude Code event structure and therefore missed signal on Codex).
 
-### v0.7.6 — Markdown + verify timeout fixes *(готово)*
+### v0.7.6 — Markdown + verify timeout fixes *(done)*
 
-Два реальных бага из прогона Сергея на v0.7.5:
+Two real bugs found in Sergey’s run on v0.7.5:
 
-- **Markdown corruption:** `report.py` вложенные ``` ломали outer fence
-  в .md отчёте. Fix через count longest backtick run + N+1 outer fence.
-  Проверено на реальном 871-finding отчёте: 0 unclosed fences после fix.
+- **Markdown corruption:** nested ``` blocks in `report.py` broke the outer
+  fence in the `.md` report. Fixed by counting the longest backtick run and
+  using an outer fence of length N+1. Verified on a real 871-finding report:
+  0 unclosed fences after the fix.
 - **Integrity review 120s timeouts:** implicit default timeout
-  backend.call() был 120s. Integrity prompts 2× больше primary verify
-  prompts; codex-cli под concurrency=4 с big prompts хитал timeout
-  одновременно на нескольких batches.
+  `backend.call()` was 120s. Integrity prompts were 2× larger than primary
+  verify prompts; codex-cli at `concurrency=4` with large prompts hit timeout
+  on several batches at once.
 
 Fix:
 - `verify_batch` timeout default 120s → 240s, param-able
 - `integrity_review` timeout default 300s
 - `--timeout` CLI flag (default 240s)
-- Integrity review throttles concurrency до `min(concurrency, 2)`
+- Integrity review throttles concurrency to `min(concurrency, 2)`
   + uses `timeout × 1.5`
 
 No rule changes — same 27 rule IDs as v0.7.5.
 
-### v0.7.5 — Cyber-class detectors + version audit *(готово)*
+### v0.7.5 — Cyber-class detectors + version audit *(done)*
 
-Первый релиз где threat model смещается от self-inflicted (over-reliance)
-к cyber-sourced (agent как жертва или vector). Основан на Check Point
-Research Feb 2026 disclosures + Cursor/MCP CVE landscape.
+The first release where the threat model shifted from self-inflicted
+(over-reliance) to cyber-sourced risk (the agent as victim or vector).
+Based on Check Point Research Feb 2026 disclosures and the Cursor/MCP CVE landscape.
 
-**2 новых детектора + 1 расширенный:**
+**2 new detectors + 1 extended detector:**
 
 - `AI-05.poisoned-project-config` (CRITICAL/HIGH/MEDIUM) — inverse
-  of `mcp-config-mutation`. Сканирует `.claude/`, `.cursor/`,
-  `.windsurf/`, `CLAUDE.md` *внутри* project dir (сessia.cwd) на
+  of `mcp-config-mutation`. Scans `.claude/`, `.cursor/`,
+  `.windsurf/`, `CLAUDE.md` *inside* the project dir (`session.cwd`) for
   shell-in-hook, STDIO-MCP, invisible unicode, sensitive path refs,
-  external exfil URLs. Один scan на unique project root, bounded
-  (≤30 files/project, ≤50 projects/run, ≤256KB/file). Ловит Check Point
+  and external exfil URLs. One scan per unique project root, bounded to
+  (≤30 files/project, ≤50 projects/run, ≤256KB/file). Catches the Check Point
   CVE-2025-59536 / CVE-2026-21852 class retroactively.
 
 - `AI-05.agent-version-vulnerable` (severity per CVE) — reads installed
-  agent CLI version via subprocess, сверяет с maintained table.
-  Текущие entries: Claude Code ≤2.0.64 (CVE-2025-59536), Cursor ≤1.9.99
+  agent CLI version via subprocess and compares it to a maintained table.
+  Current entries: Claude Code ≤2.0.64 (CVE-2025-59536), Cursor ≤1.9.99
   (CVE-2025-54136). Zero-FP by construction.
 
-- `persistence_write` extended — добавлены `.claude/hooks/*`,
+- `persistence_write` extended — added `.claude/hooks/*`,
   `.cursor/hooks/*`, `.windsurf/hooks/*`, `.codex/hooks/*`,
-  `.continue/hooks/*`. Previously только `.git/hooks/`. Agent-tool
-  hooks executable at project open — same persistence semantics.
+  `.continue/hooks/*`. Previously only `.git/hooks/`. Agent-tool
+  hooks are executable at project open, so they carry the same persistence semantics.
 
-**Total: 27 rule IDs** (было 25 в v0.7.4).
+**Total: 27 rule IDs** (up from 25 in v0.7.4).
 
-### v0.7.4 — Parallel verify + real-data calibration *(готово)*
+### v0.7.4 — Parallel verify + real-data calibration *(done)*
 
-Калибровка по 143-сессионному прогону (871 findings) реальных данных
-CyberOK. Три failure modes + претензионный детектор дали 80% FP noise
-и 30+ минут verify. Фиксим обе проблемы.
+Calibration based on a 143-session real-data run (871 findings) from
+CyberOK. Three failure modes plus a claim-heavy detector created 80% FP noise
+and 30+ minutes of verify time. This release addresses both problems.
 
 **Parallel verify infrastructure:**
 
-- `batch_verifier.verify_all_batched` переписан на ThreadPoolExecutor
-- Новый `--concurrency` flag (default 4)
+- `batch_verifier.verify_all_batched` rewritten on top of `ThreadPoolExecutor`
+- New `--concurrency` flag (default 4)
 - `--batch-size` default 10 → 25
-- Integrity review тоже параллельный
-- **Замеренный speedup 9.92x** на benchmark (bs=10 seq → bs=25 c=4)
+- Integrity review also runs in parallel
+- **Measured speedup 9.92x** on benchmark (bs=10 seq → bs=25 c=4)
 
-**FP fixes по real-data clusters:**
+**FP fixes for real-data clusters:**
 
-- AG-04 `_is_ephemeral_only` теперь стопится на shell separator — фикс
-  multi-stage `rm /tmp/X && python script.py` regression (закрывает 51/70)
-- `AI-04.mcp-config-mutation` narrow'ed: только mcp.json / .cursorrules /
-  system-level configs. Project-local CLAUDE.md и Claude Code memory
-  больше не триггерят (закрывает 36/39)
+- AG-04 `_is_ephemeral_only` now stops at the first shell separator — fixes
+  the multi-stage `rm /tmp/X && python script.py` regression (closes 51/70)
+- `AI-04.mcp-config-mutation` narrowed to only `mcp.json`, `.cursorrules`,
+  and system-level configs. Project-local `CLAUDE.md` and Claude Code memory
+  no longer trigger it (closes 36/39)
 - `behavior.hypothetical-executed` + imperative filter (EN/RU/ZH).
-  "let's check X" больше не hypothetical (закрывает 1/1)
+  "let's check X" is no longer treated as hypothetical (closes 1/1)
 - `claim_detector` threshold 4 → 5. Verb + cross-category-object alone
-  теперь остаётся `uncertain`, не `claim`. Нужен direct-category object
-  или evidence anchor (закрывает 220/523, downgrades 261 HIGH → MEDIUM)
+  now stays `uncertain`, not `claim`. A direct-category object
+  or evidence anchor is required (closes 220/523, downgrades 261 HIGH → MEDIUM)
 
-**Проекция на real data:** 871 → 563 findings (35% FP eliminated).
+**Projection on real data:** 871 → 563 findings (35% FP eliminated).
 
-Без новых детекторов — фокус на calibration. Total остаётся 25 rule IDs.
+No new detectors — the focus was calibration. Total remains 25 rule IDs.
 
-### v0.7.3 — i18n + attachment failure modes + OX MCP research *(готово)*
+### v0.7.3 — i18n + attachment failure modes + OX MCP research *(done)*
 
-**Multi-language NLU (RU/ZH):** `nlu/lexicons.py` с 3-язычными
-лексиконами, `claim_detector` переписан под CJK substring + RU/EN
+**Multi-language NLU (RU/ZH):** `nlu/lexicons.py` with three-language
+lexicons, `claim_detector` rewritten for CJK substrings plus RU/EN
 tokens. 11/11 RU + 8/8 ZH + 17/18 EN regression cases.
 
-**Новые детекторы (5):**
+**New detectors (5):**
 
 - `behavior.confirmation-bypass` (HIGH/CRITICAL) — `--force`/`-y`/
-  `--auto-approve`/`--accept-data-loss` на destructive cmd. Из GitHub
+  `--auto-approve`/`--accept-data-loss` on destructive commands. From GitHub
   issues #27063 (Railway drizzle), #34729 (Prisma reset), #4969 (Codex).
-- `behavior.hypothetical-executed` (CRITICAL) — user спросил
-  гипотетически, агент исполнил. Issue #28699.
-- `AI-04.mcp-config-mutation` (CRITICAL/HIGH) — агент пишет в
+- `behavior.hypothetical-executed` (CRITICAL) — the user asked
+  hypothetically, the agent executed anyway. Issue #28699.
+- `AI-04.mcp-config-mutation` (CRITICAL/HIGH) — the agent writes to
   `mcp.json`/settings.json/CLAUDE.md/.cursorrules. OX Security research,
   CVE-2026-30615 (Windsurf).
 - `credential.context-bleed` (HIGH/CRITICAL) — `export
-  GOOGLE_APPLICATION_CREDENTIALS=~/Downloads/...` или cloud profile
+  GOOGLE_APPLICATION_CREDENTIALS=~/Downloads/...` or a cloud profile
   switch. Reddit r/ClaudeAI Apr 2026 case (25k docs deleted).
 - `resource.api-storm` (MEDIUM/HIGH/CRITICAL) — same endpoint, varying
   args, >=25 calls. Reddit r/AI_Agents Apr 2026 (50k API / prod DB crash).
 
-**Расширены существующие детекторы:**
+**Extended existing detectors:**
 
 - AG-04/cascading-destructive: Windows (`rmdir /s /q`, `Remove-Item`),
   macOS (`diskutil apfs deleteVolume`), migrations (drizzle/prisma/n8n)
-- `cascading-destructive-chain`: добавлен Tier 0 diagnostic ops
-  (pkill -9, rm *-wal, cache clear) для ловли n8n-style remediation chains
+- `cascading-destructive-chain`: added Tier 0 diagnostic ops
+  (`pkill -9`, `rm *-wal`, cache clear) to catch n8n-style remediation chains
 - `advice.dangerous-recommendation`: `wrapper-bypass` pattern —
-  `npx -c`/`sh -c`/`python -c`/`eval` для обхода allowlist (OX Flowise)
+  `npx -c`/`sh -c`/`python -c`/`eval` to bypass allowlists (OX Flowise)
 
-**Total: 25 rule IDs** (было 22 в v0.7.2).
+**Total: 25 rule IDs** (up from 22 in v0.7.2).
 
-### v0.7.2 — Calibration from real data + composite C3 + CST *(готово)*
+### v0.7.2 — Calibration from real data + composite C3 + CST *(done)*
 
-Калибровка по данным реального 108-сессионного прогона (Apr 2026), где
-codex-cli верифицировал 256 findings и объяснял rationale каждого FP.
-Из 79% FP rate снижаем до целевых ~30-35% через узкие фиксы на тупые
-кластеры и структурные улучшения.
+Calibration based on a real 108-session run (Apr 2026), where
+codex-cli verified 256 findings and explained the rationale for each FP.
+The goal was to reduce a 79% FP rate to roughly 30-35% through targeted
+cluster fixes and structural improvements.
 
-**Новое: Compact Sandbox Trace (CST).** Для каждого значимого autonomy
-window собирается structured summary — control flow, taint chains,
+**New: Compact Sandbox Trace (CST).** For each significant autonomy
+window, the tool builds a structured summary — control flow, taint chains,
 sensitive paths, network endpoints, claims, per-category subgraph
-scores, anomaly heuristic. Attach'ится к findings как Evidence в двух
-форматах: Markdown (для .md отчёта) и JSON (для LLM верификатора).
-Решает жалобу codex'а "alert omits the transfer target and data".
+scores, anomaly heuristic. It attaches to findings as Evidence in two
+formats: Markdown (for the `.md` report) and JSON (for the LLM verifier).
+This addresses the Codex complaint that "the alert omits the transfer target and data".
 
-**Новое: NLU claim detector.** `nlu/claim_detector.py` — score-based
-пайплайн из D+E+F+H+I+J+K+M+N тактик (sentence typing, category lexicons,
+**New: NLU claim detector.** `nlu/claim_detector.py` — a score-based
+pipeline built from D+E+F+H+I+J+K+M+N tactics (sentence typing, category lexicons,
 modality/hedge penalties, evidence anchors, three-bucket output).
-94% accuracy на 18 regression cases из codex rationales. Stdlib only.
+94% accuracy on 18 regression cases from Codex rationales. Stdlib only.
 
-**Переписан C3 на composite правила:**
+**C3 rewritten into composite rules:**
 
-- `C3.autonomy-window-context` INFO — context pointer с CST, не alert
+- `C3.autonomy-window-context` INFO — a context pointer carrying CST, not an alert
 - `C3.autonomy-with-sensitive-sink` MEDIUM — window + sensitive write
 - `C3.autonomy-with-exfil-chain` HIGH/CRITICAL — window + causality
   chain external source → non-shell sink (score >=0.5 / >=0.8)
@@ -435,97 +437,97 @@ modality/hedge penalties, evidence anchors, three-bucket output).
 
 **Quick fixes:**
 
-- AG-04 `/tmp` filter — destructive на ephemeral paths skip'ается
-  (закрывает 87/87 FP)
-- AI-06 localhost filter — `127.0.0.1`/`localhost`/private IP больше
-  не "external" (закрывает 51/82 FP)
-- SSH probe evidence fix — snippet корректно описывает
-  ssh-keygen verification (закрывает 2/2 FP)
-- Unbounded-loop pytest whitelist — threshold 10 для test runners
-  (закрывает 6/8 FP)
+- AG-04 `/tmp` filter — destructive actions on ephemeral paths are skipped
+  (closes 87/87 FP)
+- AI-06 localhost filter — `127.0.0.1`/`localhost`/private IP are no longer
+  treated as "external" (closes 51/82 FP)
+- SSH probe evidence fix — the snippet now correctly describes
+  ssh-keygen verification (closes 2/2 FP)
+- Unbounded-loop pytest whitelist — threshold 10 for test runners
+  (closes 6/8 FP)
 
-**Новое в src/:**
+**New in `src/`:**
 
 - `nlu/claim_detector.py`, `nlu/taint.py`, `nlu/filters.py`
-- `cst.py` — Compact Sandbox Trace builder с JSON + Markdown рендером
-- `EDR_BACKLOG.md` — что требует runtime telemetry и отложено до v1.0
+- `cst.py` — Compact Sandbox Trace builder with JSON + Markdown renderers
+- `EDR_BACKLOG.md` — items that require runtime telemetry and are deferred to v1.0
 
-### v0.7 — Chaos detectors + dangerous advice *(готово)*
+### v0.7 — Chaos detectors + dangerous advice *(done)*
 
-Пять новых session-based детекторов из глубокого разбора 16 incidents
-AiAIFail + 11 case studies Agents of Chaos. Закрывают те failure modes
-которые config-only аудит не видит.
+Five new session-based detectors derived from deep analysis of 16
+AiAIFail incidents plus 11 "Agents of Chaos" case studies. They cover
+failure modes that config-only auditing cannot see.
 
-**Новые детекторы:**
+**New detectors:**
 
-- `behavior.unverified-completion-claim` — агент утверждает что сделал
-  (committed/pushed/deployed/tests pass/migrated/fixed) без evidence в
-  tool calls. 7 claim specs. Главный урок из ASAMM integrity-review и
-  ключевая цитата из abstract Agents of Chaos: "agents reported task
+- `behavior.unverified-completion-claim` — the agent claims it completed
+  (committed/pushed/deployed/tests pass/migrated/fixed) without evidence in
+  tool calls. 7 claim specs. The main lesson from the ASAMM integrity review,
+  and the key quote from the Agents of Chaos abstract: "agents reported task
   completion while the underlying system state contradicted those reports".
-- `behavior.cascading-destructive-chain` — 3+ destructive actions с
-  эскалацией tier'ов (T1→T4) в одной autonomy window. Из CS6 Agents
-  of Chaos (guilt-trip → прогрессивное саморазрушение).
-- `resource.unbounded-loop` — тот же tool + тот же input 4+ раз в одной
-  window (MEDIUM), 8+ раз (HIGH). Из CS4 (9-дневный relay на 60K tokens)
-  и CS5 (silent DoS через unbounded attachments).
+- `behavior.cascading-destructive-chain` — 3+ destructive actions with
+  tier escalation (T1→T4) in one autonomy window. From CS6 in Agents
+  of Chaos (guilt-trip → progressive self-destruction).
+- `resource.unbounded-loop` — the same tool + the same input 4+ times in one
+  window (MEDIUM), 8+ times (HIGH). From CS4 (a 9-day relay on 60K tokens)
+  and CS5 (silent DoS via unbounded attachments).
 - `AI-06.indirect-prompt-injection-vector` — external fetch (WebFetch,
-  curl, Read CLAUDE.md/AGENTS.md/MEMORY.md и т.д.) → sensitive action
-  без user turn между ними. Из CS10 (constitution GIST injection).
-- `advice.dangerous-recommendation` — 10 классов опасных советов в
+  curl, Read CLAUDE.md/AGENTS.md/MEMORY.md, etc.) → sensitive action
+  without a user turn between them. From CS10 (constitution GIST injection).
+- `advice.dangerous-recommendation` — 10 classes of dangerous advice in
   assistant text: run-as-root, disable-firewall, chmod-777, tls-bypass,
   git-force-push, skip-tests, delete-no-backup, hardcoded-secret,
-  curl-pipe-sh, wildcard-iam. Negation-aware ("never do X" не flag'ится).
-  Из Meta SEV1 — incident из-за _совета_ агента, не из-за его действий.
+  curl-pipe-sh, wildcard-iam. Negation-aware ("never do X" is not flagged).
+  From the Meta SEV1 incident caused by the agent’s _advice_, not its actions.
 
-**Все 5 детекторов** устанавливают `needs_llm_verification=True` —
-recall-over-precision, LLM verifier фильтрует false positives.
+**All 5 detectors** set `needs_llm_verification=True` —
+recall over precision, with the LLM verifier filtering false positives.
 
-### v0.6 — OSS imports: Aegis + AGT + LLM Guard *(готово)*
+### v0.6 — OSS imports: Aegis + AGT + LLM Guard *(done)*
 
-Импорт готовых сигнатурных баз из проверенных open-source проектов с
-правильной атрибуцией. Никакого изобретения велосипеда.
+Imports of ready-made signature bases from vetted open-source projects,
+with proper attribution. No need to reinvent the wheel.
 
-**Импорт Aegis (MIT, antropos17/Aegis):**
-- 107 agent profiles в `knowledge/aegis_agents.json`
+**Aegis import (MIT, antropos17/Aegis):**
+- 107 agent profiles in `knowledge/aegis_agents.json`
 - 180 known domains + 93 config paths + 260 process names
-- 70 sensitive path rules в 8 категориях
+- 70 sensitive path rules across 8 categories
 
-**Импорт AGT MCP patterns (MIT, microsoft/agent-governance-toolkit):**
-- 8 категорий regex в `knowledge/agt_mcp_patterns.py`
+**AGT MCP patterns import (MIT, microsoft/agent-governance-toolkit):**
+- 8 regex categories in `knowledge/agt_mcp_patterns.py`
 
-**Импорт LLM Guard approach (MIT, protectai/llm-guard):**
-- Invisible unicode через stdlib `unicodedata`
+**LLM Guard approach import (MIT, protectai/llm-guard):**
+- Invisible unicode via stdlib `unicodedata`
 
-**v0.6 детекторы:**
+**v0.6 detectors:**
 - `MCP-08.poisoned-tool-description` — AGT patterns
 - `AI-05.invisible-unicode` — LLM Guard approach
-- `C2.credential-exfil-chain` — интеграция с 70 Aegis rules
+- `C2.credential-exfil-chain` — integrated with 70 Aegis rules
 - Extended discovery — ~100 Aegis agents via `--extended`
 
-### v0.8 — Canary tokens *(планируется)*
+### v0.8 — Canary tokens *(planned)*
 
-Из анализа OSS landscape: Rebuff единственный OSS-пример с canary tokens,
-archived с мая 2025. Пустая ниша.
+From the OSS landscape analysis: Rebuff was the only OSS example with canary tokens
+and has been archived since May 2025. The niche is empty.
 
-- `agent-audit plant-canaries` — создаёт приманки в ~/.ssh/, ~/.aws/, ~/.env
-- Scan проверяет читались ли они в сессиях
-- Zero FP rate, детерминированный сигнал
+- `agent-audit plant-canaries` — creates decoys in `~/.ssh/`, `~/.aws/`, `.env`
+- Scan checks whether they were read in sessions
+- Zero FP rate, deterministic signal
 
-### v0.9 — HTML report + Mission interview *(планируется)*
+### v0.9 — HTML report + Mission interview *(planned)*
 
-- HTML single-page printable (как в ASAMM samples)
-- Интерактивный mission interview в начале scan (5 вопросов)
-- Severity recomputation по ответам owner'а
+- HTML single-page printable output (as in the ASAMM samples)
+- Interactive mission interview at the start of scan (5 questions)
+- Severity recomputation from the owner’s answers
 
-### v1.0 — EDR mode *(будущее)*
+### v1.0 — EDR mode *(future)*
 
-Переход от forensic к realtime: MCP proxy mode, continuous daemon
-watching ~/.claude/projects/, active defense через auto-applied deny rules.
+Shift from forensic to realtime: MCP proxy mode, a continuous daemon
+watching `~/.claude/projects/`, active defense via auto-applied deny rules.
 
 ## OSS attribution
 
-Все внешние данные импортируются verbatim с чёткими ссылками:
+All external data is imported verbatim with explicit references:
 
 | Source | License | Usage | Location |
 |--------|---------|-------|----------|
@@ -534,7 +536,7 @@ watching ~/.claude/projects/, active defense через auto-applied deny rules.
 | protectai/llm-guard | MIT | Unicode category approach | `detectors/secrets_in_config.py` |
 | OWASP AST10 | CC-BY-SA 4.0 | Reference taxonomy in findings | `references=[]` |
 
-Когда upstream обновляется — re-import, не ручной merge.
+When upstream updates, re-import it instead of doing manual merges.
 
 ## Detector inventory (v0.7.5)
 
@@ -579,14 +581,14 @@ The AI-05 (Supply Chain) cluster now has 4 distinct rules covering
 different sub-surfaces: `secrets-in-agent-config`, `invisible-unicode`,
 `poisoned-project-config`, `agent-version-vulnerable`.
 
-### v0.8 — Ensemble verification *(планируется)*
+### v0.8 — Ensemble verification *(planned)*
 
-Когда доступно 2+ рабочих verifier'а — критичные findings проверяются
-обоими. Disagreement = review человеком.
+When 2+ working verifiers are available, critical findings are checked
+by both. Disagreement = human review.
 
-- Применимо только для critical/high (удваивает cost)
-- Ценно для private-key-exfil, destructive-without-backup, cascading-destructive-chain
-- Метрика inter-model agreement
+- Applicable only to critical/high findings (doubles cost)
+- Most useful for private-key-exfil, destructive-without-backup, cascading-destructive-chain
+- Inter-model agreement as a metric
 
 ## Matrix verifier backends
 
@@ -600,46 +602,47 @@ different sub-surfaces: `secrets-in-agent-config`, `invisible-unicode`,
 | Ollama (local) | OLLAMA_MODEL=llama3.3 |
 | Custom OpenAI-compat | LM Studio, vLLM, llama.cpp |
 
-## Backlog (идеи без версии)
+## Backlog (unversioned ideas)
 
 ### AST Precision Plan
 
-Подробный план введения markdown AST / tree-sitter / Rego лежит
-отдельно: [docs/ast-precision-plan.md](docs/ast-precision-plan.md).
+A detailed plan for introducing markdown AST / tree-sitter / Rego lives
+separately here: [docs/ast-precision-plan.md](docs/ast-precision-plan.md).
 
-Кратко:
-- **v0.12** — markdown-it-py prefilter для native detectors (measurable,
-  reversible, локальный)
-- **v0.13** — tree-sitter для fenced shell (conditional on v0.12)
+In short:
+- **v0.12** — markdown-it-py prefilter for native detectors (measurable,
+  reversible, local)
+- **v0.13** — tree-sitter for fenced shell (conditional on v0.12)
 - **v0.14** — feature extraction cache (refactor bridge)
-- **v1.0** — Rego для maturity rollup (не для detection)
+- **v1.0** — Rego for maturity rollup (not for detection)
 
 ### ASAMM maturity rollup
 
-Findings сейчас несут primary + secondary ASAMM controls в `references`,
-но финальная L1/L2/L3 оценка не вычисляется. Это должна быть **пост-скан
-корреляция** — отдельный модуль, который принимает findings stream и
-ASAMM control catalog, выдаёт `{control_id: maturity_level}` + projected
+Findings currently carry primary + secondary ASAMM controls in `references`,
+but the final L1/L2/L3 assessment is not computed yet. This should be a
+**post-scan correlation** step — a separate module that takes a findings stream
+and the ASAMM control catalog, and produces `{control_id: maturity_level}` plus a projected
 trust grade (A-F × 1-6).
 
-Open design questions перед реализацией:
+Open design questions before implementation:
 
-- где живёт machine-readable ASAMM v0.3 control catalog (YAML/JSON)?
-- какой threshold: "сколько HIGH на control X = downgrade maturity"?
-- positive-evidence detection для L2+ (наличие tests/logs/docs, не только
+- where should the machine-readable ASAMM v0.3 control catalog live (YAML/JSON)?
+- what threshold should apply: "how many HIGH on control X = downgrade maturity"?
+- positive-evidence detection for L2+ (presence of tests/logs/docs, not only
   absence of findings)
-- как сочетать session findings + project findings + config findings
-  в один rollup
+- how should session findings + project findings + config findings
+  combine into one rollup
 
-Оценка: 3-5 дней работы после того как collection-scale + subtree mode
-закроют data quality. Engine выбора: **OPA/Rego** (см. AST Precision Plan D-4).
+Estimated effort: 3-5 days after collection-scale and subtree mode
+close the remaining data-quality gaps. Preferred engine: **OPA/Rego**
+(see AST Precision Plan D-4).
 
-## Принципы
+## Principles
 
-1. Прозрачность поверх магии — никаких silent fallbacks
-2. Consent на expanded scope — явное согласие с точным описанием
-3. Recall over precision в aggressive режиме — LLM разгребёт
-4. Никогда не auto-apply — мы forensic tool, не active defense
+1. Transparency over magic — no silent fallbacks
+2. Consent for expanded scope — explicit agreement with precise wording
+3. Recall over precision in aggressive mode — the LLM verifier handles cleanup
+4. Never auto-apply — we are a forensic tool, not active defense
 5. Zero-dependency backends — urllib only
-6. Integrity review > одиночного прохода — structural control
-7. OSS over inventing — готовые MIT-сигнатуры лучше самописных
+6. Integrity review over a single pass — structural control
+7. OSS over inventing — proven MIT signature packs beat homegrown ones

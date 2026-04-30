@@ -880,8 +880,8 @@ startup overhead, for a projected 30+ minute verify pass. v0.7.4:
    rule fired on "while it runned let's check httpbruter.zip and decide"
    because "let's" triggered hypothetical framing — but the user was
    giving a direct imperative. Fix: new `_IMPERATIVE_MARKERS` regex
-   with EN + RU + ZH verbs (check, analyze, decide, проверь, разбери,
-   распакуй, 检查, 分析). If user message contains a direct
+   with EN + RU + ZH verbs (for example: check, analyze, decide, plus
+   imperative verbs in Russian and Chinese). If user message contains a direct
    imperative without explicitly destructive verbs, skip the rule.
    Eliminates 1 of 1 FP on the real data (the rule only fired once).
 
@@ -936,7 +936,7 @@ specific GitHub issues: Claude Code #27063 (Railway prod wipe), #34729
 **New: `behavior.hypothetical-executed`** (CRITICAL). Catches the intent-
 action mismatch: user asks hypothetically ("what would happen if we
 deleted X"), agent actually executes. Multi-language patterns (EN "what
-if", RU "что будет если", ZH "如果...会"). References Claude Code
+if", RU conditional phrasing, ZH conditional phrasing). References Claude Code
 issue #28699.
 
 **New: `AI-04.mcp-config-mutation`** (CRITICAL). Agent writing to
