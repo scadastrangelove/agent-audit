@@ -60,6 +60,45 @@ def _tool_signature(event: Event) -> str:
     return h
 
 
+_READ_ONLY_SHELL_CMD = re.compile(
+    r"""\b(?:
+        Get-Content
+      | cat
+      | type
+      | tail
+      | head
+      | less
+      | more
+      | Select-String
+      | rg
+      | grep
+    )\b""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+_DIAGNOSTIC_CHECK_CMD = re.compile(
+    r"""\b(?:
+        py_compile
+      | compileall
+      | cargo\s+check
+      | tsc\b[^\n]*--noEmit
+      | mypy\b
+      | pyright\b
+    )\b""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _shell_command_text(event: Event) -> str:
+    if event.type != EventType.TOOL_USE:
+        return ""
+    for key in ("command", "cmd", "script"):
+        value = (event.tool_input or {}).get(key)
+        if isinstance(value, str):
+            return value
+    return ""
+
+
 class UnboundedLoop(Rule):
     """Repetitive tool calls without progress — CS4 / CS5 from Agents of Chaos.
 
@@ -119,12 +158,7 @@ class UnboundedLoop(Rule):
                 effective_threshold = self.MIN_REPEATS_FOR_LOOP
                 if ((tool_name or "").lower() in ("bash", "shell")
                         or getattr(first, "canonical_tool", None) == "Bash"):
-                    cmd = ""
-                    for k in ("command", "cmd", "script"):
-                        v = (first.tool_input or {}).get(k)
-                        if isinstance(v, str):
-                            cmd = v
-                            break
+                    cmd = _shell_command_text(first)
                     if re.search(
                         r"""\b(?:
                             pytest | py\.test
@@ -138,6 +172,12 @@ class UnboundedLoop(Rule):
                         re.IGNORECASE | re.VERBOSE,
                     ):
                         effective_threshold = 10
+                    # v0.15.1: repeated read-only inspection and syntax-check
+                    # commands are common during debugging on Windows and in
+                    # terminal-heavy sessions. They are still worth catching
+                    # at very high repeat counts, but not at 4-6 repeats.
+                    elif _READ_ONLY_SHELL_CMD.search(cmd) or _DIAGNOSTIC_CHECK_CMD.search(cmd):
+                        effective_threshold = 8
 
                 # v0.7.6: Codex polling whitelist — `write_stdin` with
                 # empty `chars` is semantically a READ from a tmux session's

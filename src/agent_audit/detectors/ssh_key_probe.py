@@ -80,8 +80,11 @@ def _is_private_key_encrypted(path: Path) -> bool:
         # Non-zero exit → encryption or other issue. Assume encrypted (safer).
         return result.returncode != 0
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        # ssh-keygen not available or failed — fall back to PEM-header heuristic
-        return False  # best-guess: unencrypted since we couldn't verify
+        # If verification tooling is unavailable or access is denied, be
+        # conservative and do not emit a finding. Probe-health reporting is
+        # handled elsewhere; this rule should not turn environment friction
+        # into a security alert.
+        return True
 
 
 class SSHKeyUnencrypted(Rule):
@@ -107,7 +110,10 @@ class SSHKeyUnencrypted(Rule):
 
         # Only run once per audit session — keyed on a single well-known marker
         ssh_dir = Path.home() / ".ssh"
-        if not ssh_dir.exists() or not ssh_dir.is_dir():
+        try:
+            if not ssh_dir.exists() or not ssh_dir.is_dir():
+                return
+        except OSError:
             return
 
         # We use agent_home as the "trigger" — register finding only for one
@@ -126,7 +132,10 @@ class SSHKeyUnencrypted(Rule):
 
         for name in SSH_KEY_NAMES:
             key_path = ssh_dir / name
-            if not key_path.exists() or not key_path.is_file():
+            try:
+                if not key_path.exists() or not key_path.is_file():
+                    continue
+            except OSError:
                 continue
 
             if _is_private_key_encrypted(key_path):
