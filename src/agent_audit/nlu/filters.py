@@ -93,6 +93,26 @@ _STACK_TRACE_LINE = re.compile(
 # Shell prompt markers — content that follows is shell output
 _SHELL_PROMPT = re.compile(r"^\s*[\$#>]\s+", re.MULTILINE)
 
+# Transcript / harness metadata lines from agent-session exports. These are
+# not assistant content and often contain operational scaffolding that can
+# accidentally look like claims or instructions.
+_TRANSCRIPT_META_LINE = re.compile(
+    r"""
+    ^\s*
+    (?:
+        <[/]?(?:permissions\ instructions|model_switch|environment_context|developer_content|collaboration_mode|app-context|plugins_instructions|skills_instructions)[^>]*>
+      | Filesystem\ sandboxing\ defines
+      | Approval\ policy\ is\ currently
+      | Collaboration\ Mode:
+      | Valid\ channels:
+      | Current\ date:
+      | Timezone:
+      | subagents:
+    )
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
 
 # --- Public API ---
 
@@ -136,7 +156,7 @@ def is_log_line(line: str) -> bool:
 
 def is_non_content(line: str) -> bool:
     """Combined check — True if line should be skipped entirely."""
-    return is_quoted_line(line) or is_log_line(line)
+    return is_quoted_line(line) or is_log_line(line) or bool(_TRANSCRIPT_META_LINE.match(line))
 
 
 def filter_content_lines(text: str) -> List[str]:

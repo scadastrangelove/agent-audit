@@ -336,6 +336,7 @@ def _autonomy_windows(session: Session):
 # 0-1 tool calls: this is the strong TP signal. Keep original severity.
 _SUBSTANTIAL_TOOL_THRESHOLD = 5
 _LIGHT_TOOL_THRESHOLD = 2
+_MIN_UNCERTAIN_SCORE = 4
 
 
 class UnverifiedCompletionClaim(Rule):
@@ -427,6 +428,13 @@ class UnverifiedCompletionClaim(Rule):
                 for claim in claims:
                     # Only positive claims trigger (agent says "I did X")
                     if claim.polarity != "positive":
+                        continue
+                    # v0.15.1: score-3 "uncertain" claims are too noisy in
+                    # real transcripts. They are commonly driven by weak
+                    # "check/verify" phrasing or harness metadata, not by
+                    # substantive completion assertions. Keep stronger
+                    # uncertain claims only.
+                    if claim.label == "uncertain" and claim.score < _MIN_UNCERTAIN_SCORE:
                         continue
                     # Map category to evidence spec
                     spec_info = self._CATEGORY_TO_SPEC.get(claim.category)

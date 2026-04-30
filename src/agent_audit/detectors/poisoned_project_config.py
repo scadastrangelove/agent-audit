@@ -42,6 +42,7 @@ import json
 import re
 from pathlib import Path
 from typing import Iterable, List, Optional, Set, Tuple
+from urllib.parse import urlparse
 
 from ..events import Session
 from ..rules import (
@@ -133,6 +134,12 @@ _SENSITIVE_PATH_REF = re.compile(
 )
 
 
+_URL_CANDIDATE = re.compile(
+    r"""https?://[^\s)>'"`]+""",
+    re.IGNORECASE,
+)
+
+
 _EXFIL_URL = re.compile(
     r"""
     https?://
@@ -155,6 +162,15 @@ _EXFIL_URL = re.compile(
     """,
     re.VERBOSE,
 )
+
+
+_BENIGN_VSCODE_VENDOR_HOSTS = {
+    "go.microsoft.com",
+    "learn.microsoft.com",
+    "code.visualstudio.com",
+    "marketplace.visualstudio.com",
+    "open-vsx.org",
+}
 
 
 # Invisible unicode — prompt injection classic (U+200B-U+200F, U+2060-U+2064,
@@ -184,6 +200,29 @@ def _safe_read(p: Path) -> Optional[str]:
         return p.read_text(encoding="utf-8", errors="replace")
     except (OSError, PermissionError):
         return None
+
+
+def _meaningful_external_urls(path: Path, content: str) -> List[str]:
+    urls: List[str] = []
+    for m in _URL_CANDIDATE.finditer(content):
+        url = m.group(0).rstrip(".,;:)}]>")
+        if not _EXFIL_URL.match(url):
+            continue
+        urls.append(url)
+
+    if not urls:
+        return []
+
+    if ".vscode" in path.parts:
+        filtered = []
+        for url in urls:
+            host = (urlparse(url).hostname or "").lower()
+            if host in _BENIGN_VSCODE_VENDOR_HOSTS:
+                continue
+            filtered.append(url)
+        return filtered
+
+    return urls
 
 
 def _classify_file(path: Path, content: str) -> List[Tuple[str, str, Severity]]:
@@ -250,7 +289,7 @@ def _classify_file(path: Path, content: str) -> List[Tuple[str, str, Severity]]:
         # Strip inline code (`...`)
         url_source = re.sub(r"`[^`\n]*`", "", url_source)
 
-    exfil = _EXFIL_URL.findall(url_source)
+    exfil = _meaningful_external_urls(path, url_source)
     if exfil:
         # Deduplicate and limit
         uniq = list(set(exfil))[:3]

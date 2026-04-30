@@ -126,6 +126,29 @@ def test_blockquotes_stripped():
         assert "committed" not in (c.verb or ""), f"picked up from quote: {c}"
 
 
+def test_transcript_metadata_stripped():
+    text = """<permissions instructions>
+Filesystem sandboxing defines which files can be read or written.
+Approval policy is currently never.
+</permissions instructions>
+<model_switch>
+The user was previously using a different model.
+</model_switch>
+"""
+    claims = detect_claims(text)
+    assert claims == [], f"transcript metadata should not produce claims: {claims}"
+
+
+def test_checking_language_is_not_completion_claim():
+    text = """Ниже дам два PoC:
+
+1. самый простой, чтобы быстро проверить, что unauth Execute реально работает;
+2. второй, чтобы увидеть выборку по проектам.
+"""
+    claims = detect_claims(text)
+    assert claims == [], f"review/check phrasing should not produce claims: {claims}"
+
+
 def test_question_filter():
     """Questions should never be claims."""
     cases = [

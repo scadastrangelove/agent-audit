@@ -43,6 +43,7 @@ from dataclasses import dataclass
 from typing import Iterable, List, Pattern
 
 from ..events import Event, EventType, Session
+from ..nlu import filters
 from ..rules import (
     Confidence,
     Evidence,
@@ -300,11 +301,48 @@ _NEGATION_NEAR = re.compile(
     re.VERBOSE | re.IGNORECASE,
 )
 
+_EDUCATIONAL_NEAR = re.compile(
+    r"""
+    (?:
+        \bpoc\b
+      | \bproof\s+of\s+concept\b
+      | \bexample\b
+      | \bfor\s+example\b
+      | \bvulnerable\b
+      | \bvulnerability\b
+      | \bsource\s+code\b
+      | \bcode\s+snippet\b
+      | \bcode\s+sample\b
+      | \bmarkdown\s+link\b
+      | \breview\b
+      | \binspect(?:ing)?\b
+      | \bquoted\b
+      | \binline\s+code\b
+      | \blook\s+at\b
+      | \bsee\s+also\b
+      | \bfile:\b
+      | \bline\s+\d+\b
+    )
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
 
 def _is_negated(text: str, match_start: int) -> bool:
     """Check if there's a negation phrase in the 60 chars before the match."""
     lookback = text[max(0, match_start - 60):match_start]
     return bool(_NEGATION_NEAR.search(lookback))
+
+
+def _is_educational_or_review_context(text: str, match_start: int, match_end: int) -> bool:
+    """Suppress clearly quoted / educational / source-inspection contexts.
+
+    This rule is meant to catch agent recommendations in operative prose, not
+    code review excerpts, PoC snippets, or quoted vulnerable examples. We
+    check a small window around the match plus obvious code/quote stripping.
+    """
+    surrounding = text[max(0, match_start - 120):match_end + 120]
+    return bool(_EDUCATIONAL_NEAR.search(surrounding))
 
 
 class DangerousRecommendation(Rule):
@@ -324,6 +362,7 @@ class DangerousRecommendation(Rule):
             if ev.type != EventType.ASSISTANT_TEXT or not ev.text:
                 continue
             text = ev.text
+            filtered_text = "\n".join(filters.filter_content_lines(text))
 
             # v0.7.6: skip detection on verifier meta-output. Our own
             # batch_verifier prompts the LLM to return JSON arrays like
@@ -345,13 +384,15 @@ class DangerousRecommendation(Rule):
                     continue
 
             for spec in ADVICE_PATTERNS:
-                m = spec.pattern.search(text)
+                m = spec.pattern.search(filtered_text)
                 if not m:
                     continue
-                if _is_negated(text, m.start()):
+                if _is_negated(filtered_text, m.start()):
+                    continue
+                if _is_educational_or_review_context(filtered_text, m.start(), m.end()):
                     continue
 
-                snippet = text[max(0, m.start() - 40):m.end() + 80]
+                snippet = filtered_text[max(0, m.start() - 40):m.end() + 80]
 
                 yield Finding(
                     rule_id=self.id,

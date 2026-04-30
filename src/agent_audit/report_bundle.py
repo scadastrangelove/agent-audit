@@ -26,6 +26,9 @@ BUNDLE_VERSION = 2
 NOISY_RULE_IDS = {
     "behavior.unverified-completion-claim",
 }
+CONTEXT_RULE_IDS = {
+    "C3.autonomy-window-context",
+}
 
 
 def _severity_rank(name: Optional[str]) -> int:
@@ -61,6 +64,8 @@ def _rule_id(finding: dict) -> str:
 
 def _finding_class_of(finding: dict) -> str:
     rule_id = _rule_id(finding)
+    if rule_id in CONTEXT_RULE_IDS:
+        return "context"
     if rule_id.startswith("probe."):
         return "probe"
     if rule_id.startswith("C3.") or "autonomy" in rule_id:
@@ -75,6 +80,10 @@ def _signal_profile_of(finding: dict) -> str:
     rule_id = _rule_id(finding)
     if "source:agent-audit-native" in refs:
         return "native"
+    if rule_id in CONTEXT_RULE_IDS:
+        return "context_trace"
+    if rule_id.endswith(".error") and _finding_class_of(finding) == "probe":
+        return "probe_health"
     if rule_id in NOISY_RULE_IDS:
         return "noisy_behavioral"
     if _finding_class_of(finding) in {"config", "probe"}:
@@ -85,6 +94,10 @@ def _signal_profile_of(finding: dict) -> str:
 def _default_report_group(finding: dict) -> str:
     finding_class = finding.get("finding_class") or _finding_class_of(finding)
     profile = finding.get("signal_profile") or _signal_profile_of(finding)
+    if finding_class == "context":
+        return "context_only"
+    if finding_class == "probe" and _rule_id(finding).endswith(".error"):
+        return "probe_health"
     if finding_class in {"config", "probe"}:
         return "confirmed_local"
     if profile == "noisy_behavioral":
@@ -129,6 +142,10 @@ def _verification_by_id(verified_doc: Optional[dict]) -> Dict[str, dict]:
 
 def _final_report_group(raw_finding: dict, verified: Optional[dict]) -> str:
     finding_class = raw_finding["finding_class"]
+    if finding_class == "context":
+        return "context_only"
+    if finding_class == "probe" and _rule_id(raw_finding).endswith(".error"):
+        return "probe_health"
     if finding_class in {"config", "probe"}:
         return "confirmed_local"
     if not verified:
@@ -270,6 +287,8 @@ def render_bundle_readme(raw_doc: dict, verified_doc: Optional[dict] = None, *, 
     verified_behavior = [r for r in verified_records if r["report_group"] == "behavioral" and r.get("verdict") == "true_positive"]
     uncertain = [r for r in verified_records if r["report_group"] == "uncertain"]
     raw_only = [r for r in verified_records if r["report_group"] == "raw_only"]
+    context_only = [r for r in verified_records if r["report_group"] == "context_only"]
+    probe_health = [r for r in verified_records if r["report_group"] == "probe_health"]
     noisy_counts = Counter(r["rule_id"] for r in raw_only)
 
     lines = [
@@ -297,6 +316,8 @@ def render_bundle_readme(raw_doc: dict, verified_doc: Optional[dict] = None, *, 
         lines.append("- Verified outcome: not run")
     lines.append(f"- Confirmed local risks: {len(confirmed_local)}")
     lines.append(f"- Verified behavioral findings: {len(verified_behavior)}")
+    lines.append(f"- Context trace cards: {len(context_only)}")
+    lines.append(f"- Probe health warnings: {len(probe_health)}")
     lines.append(f"- Patch bundle available: {patch_count}")
     lines.append("")
 
@@ -327,11 +348,30 @@ def render_bundle_readme(raw_doc: dict, verified_doc: Optional[dict] = None, *, 
         lines.append("- None")
     lines.append("")
 
+    lines.append("## Probe Health / Collection Errors")
+    lines.append("")
+    if probe_health:
+        for record in _top_findings(probe_health):
+            _render_finding_block(lines, record, verified=False)
+    else:
+        lines.append("- None")
+    lines.append("")
+
     lines.append("## Noisy / Raw Hypothesis Classes")
     lines.append("")
     if raw_only:
         for rule_id, count in noisy_counts.most_common(10):
             lines.append(f"- `{rule_id}` — {count} raw findings")
+    else:
+        lines.append("- None")
+    lines.append("")
+
+    lines.append("## Context Trace Cards")
+    lines.append("")
+    if context_only:
+        lines.append(
+            f"- `C3.autonomy-window-context` — {len(context_only)} informational autonomy-window traces"
+        )
     else:
         lines.append("- None")
     lines.append("")
@@ -424,6 +464,8 @@ def _summary_doc(raw_doc: dict, verified_doc: Optional[dict], *, patch_count: in
         "confirmed_local_risks": group_counts.get("confirmed_local", 0),
         "verified_behavioral_findings": verified_behavioral,
         "uncertain_findings": uncertain_count,
+        "context_trace_cards": group_counts.get("context_only", 0),
+        "probe_health_warnings": group_counts.get("probe_health", 0),
         "patch_count": patch_count,
         "files": files,
     }
@@ -456,7 +498,10 @@ def write_scan_bundle(
     sessions = build_sessions_of_concern(raw_doc, verified_doc)
     config_findings = [r for r in verified_records if r["finding_class"] == "config"]
     probe_findings = [r for r in verified_records if r["finding_class"] == "probe"]
-    behavior_findings = [r for r in verified_records if r["finding_class"] in {"behavior", "window"}]
+    behavior_findings = [
+        r for r in verified_records
+        if r["finding_class"] in {"behavior", "window"} and r["report_group"] != "context_only"
+    ]
 
     raw_findings_path.write_text(json.dumps(raw_doc["findings"], indent=2), encoding="utf-8")
     sessions_path.write_text(json.dumps(sessions, indent=2), encoding="utf-8")

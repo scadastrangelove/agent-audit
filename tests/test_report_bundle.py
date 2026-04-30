@@ -44,6 +44,28 @@ def _raw_doc():
                 "references": [],
                 "evidence": [{"description": "claim", "source": "/tmp/session.jsonl", "session_id": "sess-1", "snippet": "I committed the change"}],
             },
+            {
+                "finding_id": "F00003",
+                "rule_id": "C3.autonomy-window-context",
+                "title": "High-autonomy window (informational)",
+                "severity": "info",
+                "confidence": "high",
+                "summary": "context only",
+                "needs_llm_verification": False,
+                "references": [],
+                "evidence": [{"description": "cst", "source": "/tmp/session.jsonl", "session_id": "sess-1", "snippet": "window trace"}],
+            },
+            {
+                "finding_id": "F00004",
+                "rule_id": "probe.ssh-key-unencrypted.error",
+                "title": "Rule probe.ssh-key-unencrypted failed",
+                "severity": "low",
+                "confidence": "low",
+                "summary": "Internal error during rule execution: access denied",
+                "needs_llm_verification": False,
+                "references": [],
+                "evidence": [],
+            },
         ],
     }
 
@@ -66,6 +88,8 @@ def test_build_verified_records_applies_groups():
 
     assert by_id["F00001"]["report_group"] == "confirmed_local"
     assert by_id["F00002"]["report_group"] == "behavioral"
+    assert by_id["F00003"]["report_group"] == "context_only"
+    assert by_id["F00004"]["report_group"] == "probe_health"
     assert by_id["F00002"]["final_severity"] == "medium"
 
 
@@ -100,6 +124,10 @@ def test_write_scan_bundle_writes_expected_files(tmp_path):
     summary = json.loads(paths["summary"].read_text(encoding="utf-8"))
     assert summary["verification"]["enabled"] is True
     assert summary["verified_behavioral_findings"] == 0
+    assert summary["context_trace_cards"] == 1
+    assert summary["probe_health_warnings"] == 1
     verified = json.loads(paths["verified_findings"].read_text(encoding="utf-8"))
     by_id = {record["finding_id"]: record for record in verified}
     assert by_id["F00002"]["report_group"] == "raw_only"
+    assert by_id["F00003"]["report_group"] == "context_only"
+    assert by_id["F00004"]["report_group"] == "probe_health"
