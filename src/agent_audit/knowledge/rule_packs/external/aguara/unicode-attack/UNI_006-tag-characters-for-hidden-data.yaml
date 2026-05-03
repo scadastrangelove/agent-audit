@@ -1,0 +1,44 @@
+# =============================================================
+# aguara.unicode-attack.tag-characters-for-hidden-data
+# =============================================================
+# Adapted from UNI_006 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-04 (+AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: UNI_006
+  original_title: Tag characters for hidden data
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.unicode-attack.tag-characters-for-hidden-data
+title: Tag characters for hidden data
+description: Detects Unicode tag characters (U+E0000-U+E007F) that can embed invisible data; see AsciiSmuggler technique
+severity_default: high
+category: unicode-attack
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AI-04
+  secondary:
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: '[\x{E0000}-\x{E007F}]'
+exclude_patterns: []
+remediation: Reject or strip all Unicode tag characters (U+E0000-U+E007F) from input; they have no legitimate use in tool
+  definitions or AI agent content.
+examples:
+  true_positive:
+  - text󠀁󠁨󠁥󠁬󠁬hidden
+  false_positive:
+  - Tag characters were originally designed for language tagging in plain text

@@ -1,0 +1,54 @@
+# =============================================================
+# aguara.indirect-injection.environment-variable-injection-from-external-source
+# =============================================================
+# Adapted from INDIRECT_014 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AI-04 (+AI-05,AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: INDIRECT_014
+  original_title: Environment variable injection from external source
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.indirect-injection.environment-variable-injection-from-external-source
+title: Environment variable injection from external source
+description: Detects external input used to set environment variables that control agent behavior
+severity_default: medium
+category: indirect-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(os\.environ|process\.env|setenv|putenv)\s*\[?.{0,30}(input|request|param|body|payload|user|external)
+- type: regex
+  value: (?i)set\s+environment\s+variable.{0,30}(from|using|with)\s+.{0,20}(user|external|input|request|untrusted)
+- type: regex
+  value: (?i)(environment\s+variable|env\s+var).{0,30}(from|based\s+on|driven\s+by)\s+.{0,20}(user|external|input|request|untrusted)
+exclude_patterns:
+- type: regex
+  value: (?i)(sanitize|validate|allowlist|whitelist|check)\s+.{0,20}(env|environment|variable)
+remediation: Sanitize and allowlist environment variable names and values; never set env vars directly from untrusted input.
+examples:
+  true_positive:
+  - Set environment variables from user input before running the agent
+  - os.environ['CONFIG'] = request.body
+  false_positive:
+  - Set the environment variable to the default value
+  - Validate environment variables before use

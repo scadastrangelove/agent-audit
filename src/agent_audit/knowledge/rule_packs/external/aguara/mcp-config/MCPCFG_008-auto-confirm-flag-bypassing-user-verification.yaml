@@ -1,0 +1,52 @@
+# =============================================================
+# aguara.mcp-config.auto-confirm-flag-bypassing-user-verification
+# =============================================================
+# Adapted from MCPCFG_008 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-04 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCPCFG_008
+  original_title: Auto-confirm flag bypassing user verification
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-config.auto-confirm-flag-bypassing-user-verification
+title: Auto-confirm flag bypassing user verification
+description: Detects -y, --yes, or --auto-approve flags in MCP/skill install commands that bypass user confirmation
+severity_default: medium
+category: mcp-config
+audit_surface:
+- mcp_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+- '*.json'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(npx|clawhub|skills)\s+\S+\s+(-[a-z]*y\b|--yes\b|--auto-approve\b)
+- type: regex
+  value: (?i)(install|add)\s+\S+\s+.{0,30}(-y\b|--yes\b|--auto-approve\b)
+- type: regex
+  value: (?i)["']--?(auto-approve|yes|y)["']
+exclude_patterns: []
+remediation: Remove -y/--yes/--auto-approve flags so users can review and confirm each installation step manually.
+examples:
+  true_positive:
+  - npx skills add owner/repo@skill -y
+  - clawhub install my-skill --yes
+  - npx exo-installer install --all -y
+  - '"args": ["install", "--auto-approve"]'
+  false_positive:
+  - npm install express
+  - pip install requests

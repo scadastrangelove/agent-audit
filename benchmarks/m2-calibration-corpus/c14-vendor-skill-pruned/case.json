@@ -1,0 +1,16 @@
+{
+  "id": "c14-vendor-skill-pruned",
+  "title": "node_modules contains a SKILL.md with bypass language; vendor pruning skips it",
+  "agent": "claude_code",
+  "description": "False-positive guard. A vendored package inside node_modules ships its own SKILL.md with approval-bypass language. The inventory walker MUST prune node_modules so this skill doesn't contribute to has_broad_action_without_approval. Without pruning, every project with vendored deps would trigger spurious correlators.",
+  "source_type": "synthetic_calibration",
+  "tags": ["vendor-pruning", "negative", "true-negative", "fpr-robustness"],
+  "m2_expected": {
+    "expected_correlator": null,
+    "expected_link": false,
+    "expected_repo_tags": [],
+    "expected_dynamic_finding_kind": null,
+    "expected_proximity_minimum": null,
+    "rationale": "Inventory walker prunes node_modules, .venv, dist, build, etc. The vendored SKILL.md with bypass language is INSIDE node_modules and must NOT count toward the repo's structural risk profile — those instructions are not under the project owner's control. Tags should be empty; correlator should not fire."
+  }
+}

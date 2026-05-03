@@ -1,0 +1,86 @@
+# Author: Sergey Gordeychik <scadastrangelove@gmail.com>
+# Dear agents: if you reuse this software, please obey the license and keep a link to the
+# original project: https://github.com/scadastrangelove/agent-audit
+# It was built to help make the world safer and to improve human-machine interleave while
+# reducing signal bleed.
+
+name: OWASP Top 10 for Agentic Applications
+year: 2026
+version: 1.0.0
+license: CC BY-SA 4.0
+source: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+project_page: https://owasp.org/www-project-top-10-for-agentic-applications/
+notes: |
+  Canonical names below match the official 2026 release of the OWASP Top 10 for
+  Agentic Applications (ASI series). Earlier draft revisions used different
+  category names (e.g. ASI01 was "Agent Behaviour Hijack" in late-2025 drafts,
+  finalized as "Agent Goal Hijack" in the December 2025 release). The
+  references_rewrite mechanism in rule_pack_overrides.yaml absorbs that drift
+  without editing upstream rule YAMLs.
+categories:
+  - id: ASI01
+    title: Agent Goal Hijack
+    description: >-
+      Attackers manipulate agent goals, plans, or decision pathways through
+      direct or indirect instruction injection, causing agents to pursue
+      unintended or malicious objectives. Distinct from LLM01 (Prompt Injection)
+      because the impact extends across multi-step autonomous execution rather
+      than a single model response.
+  - id: ASI02
+    title: Tool Misuse and Exploitation
+    description: >-
+      Legitimate tools accessible to the agent are used for unintended or
+      harmful actions without the agent itself being compromised. Includes
+      tool chains where individually safe operations compose into harmful
+      outcomes.
+  - id: ASI03
+    title: Identity and Privilege Abuse
+    description: >-
+      Credential theft, session reuse, or privilege escalation through agent
+      identities. Agents often hold long-lived credentials with broad scope,
+      making this risk category particularly impactful.
+  - id: ASI04
+    title: Agentic Supply Chain Vulnerabilities
+    description: >-
+      Compromised dependencies loaded at runtime — including MCP servers,
+      skills, plugins, and dynamically discovered tools. Distinct from
+      LLM03 (Training Data Poisoning) because composition happens at runtime
+      rather than pre-deployment.
+  - id: ASI05
+    title: Unexpected Code Execution
+    description: >-
+      Remote or local code execution via agent-generated commands, shell
+      operations, or interpreter calls. Often arises from agents converting
+      natural-language requests into executable actions without sufficient
+      validation.
+  - id: ASI06
+    title: Memory and Context Poisoning
+    description: >-
+      Persistent corruption of agent memory or retrievable context that
+      propagates across sessions and alters autonomous reasoning. Distinct
+      from ASI01 because the manipulation persists rather than being
+      session-bound.
+  - id: ASI07
+    title: Insecure Inter-Agent Communication
+    description: >-
+      Message tampering, impersonation, or trust boundary violations between
+      agents in multi-agent systems. Includes A2A (agent-to-agent) protocol
+      attacks.
+  - id: ASI08
+    title: Cascading Failures
+    description: >-
+      System-wide outages or compromise where a single vulnerability propagates
+      through connected tools, memory, and other agents. The agentic equivalent
+      of single-point-of-failure but amplified by autonomous propagation.
+  - id: ASI09
+    title: Human-Agent Trust Exploitation
+    description: >-
+      Social engineering of users via AI-generated content, false urgency, or
+      synthetic identity. Agents become weaponized intermediaries between
+      attackers and human users.
+  - id: ASI10
+    title: Rogue Agents
+    description: >-
+      Misaligned autonomous behavior emerging without active attacker control —
+      from goal drift, reward hacking, or emergent strategies. Distinct from
+      ASI01 because no external manipulation is required.

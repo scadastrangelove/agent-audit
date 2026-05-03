@@ -1,0 +1,55 @@
+# =============================================================
+# aguara.mcp-attack.prototype-pollution-vector
+# =============================================================
+# Adapted from MCP_012 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-05,AI-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCP_012
+  original_title: Prototype pollution vector
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-attack.prototype-pollution-vector
+title: Prototype pollution vector
+description: Detects prototype pollution patterns via __proto__, constructor.prototype, or unguarded property traversal in
+  tool code
+severity_default: high
+category: mcp-attack
+audit_surface:
+- mcp_manifest
+- tool_description
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-05
+  - AI-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: \[\s*["']__proto__["']\s*\]
+- type: regex
+  value: \.__proto__\s*[=.\[]
+- type: regex
+  value: \[\s*["']constructor["']\s*\]\s*[.\[]\s*["']?prototype
+exclude_patterns:
+- type: regex
+  value: (?i)(filter|block|reject|strip|delete|remove|skip|check|validate|sanitize).{0,30}__proto__
+- type: regex
+  value: (?i)(__proto__|prototype\s+pollution).{0,30}(attack|vulnerability|exploit|prevent|defense|mitigation)
+remediation: Freeze prototypes with Object.freeze(Object.prototype). Filter __proto__ and constructor keys from untrusted
+  input.
+examples:
+  true_positive:
+  - obj['__proto__']['isAdmin'] = true
+  - payload.__proto__.polluted = 'yes'
+  - input['constructor']['prototype'].isAdmin = true
+  false_positive:
+  - Filter out __proto__ from user input before merging
+  - Prototype pollution attacks target JavaScript objects

@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.mcp-config.sudo-in-mcp-server-command
+# =============================================================
+# Adapted from MCPCFG_005 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCPCFG_005
+  original_title: sudo in MCP server command
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-config.sudo-in-mcp-server-command
+title: sudo in MCP server command
+description: Detects sudo usage in MCP server command or arguments for privilege escalation
+severity_default: high
+category: mcp-config
+audit_surface:
+- mcp_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)["']command["']\s*:\s*["']sudo["']
+- type: regex
+  value: (?i)["']args["']\s*:\s*\[[^\]]*["']sudo\b[^"']*["']
+exclude_patterns: []
+remediation: Remove sudo from the MCP command. Run the server as an unprivileged user or configure permissions at the system
+  level.
+examples:
+  true_positive:
+  - '"command": "sudo", "args": ["node", "server.js"]'
+  - '"args": ["sudo", "python", "mcp_server.py"]'
+  false_positive:
+  - '"command": "node", "args": ["server.js"]'
+  - Use sudo to install system packages

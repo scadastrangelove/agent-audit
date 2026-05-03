@@ -1,0 +1,69 @@
+# =============================================================
+# nova.prompt-injection.direct-prompt-injection
+# =============================================================
+# Adapted from DirectPromptInjection (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: DirectPromptInjection
+  original_title: DirectPromptInjection
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: e3b474c5-2145-4a47-8c39-c3fe752b6935
+  upstream_author: '@fr0gger_'
+agent_audit_id: nova.prompt-injection.direct-prompt-injection
+title: Detects direct prompt injection attempts
+description: Detects direct prompt injection attempts
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: ignore (previous|above|earlier) (instructions|guidelines|prompt)
+- type: regex
+  value: overwrite (previous|above|earlier) (instructions|guidelines|prompt)
+- type: regex
+  value: disregard (previous|above|earlier) (instructions|guidelines|prompt)
+- type: regex
+  value: forget (previous|above|earlier) (instructions|guidelines|prompt)
+- type: regex
+  value: (?i)system\ prompt
+- type: regex
+  value: (?i)new\ instructions
+- type: regex
+  value: you are now|become a|act as
+exclude_patterns: []
+upstream_severity: high
+upstream_semantics_patterns:
+- name: bypass_instructions
+  prose: ignore your instructions
+  threshold: 0.5
+- name: change_behavior
+  prose: change your behavior
+  threshold: 0.5
+upstream_llm_checks:
+- name: instruction_override
+  prompt: Is this prompt attempting to override or modify previous instructions given to the AI?
+  threshold: 0.35
+upstream_condition_raw: (any of keywords.*) or semantics.$bypass_instructions or semantics.$change_behavior or llm.$instruction_override
+upstream_condition_mapping_note: mixed condition; keyword side approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

@@ -20,6 +20,7 @@ See knowledge/rule_packs/atr/README.md and external/README.md for attribution.
 from __future__ import annotations
 
 import re
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, List, Optional, Set
@@ -41,17 +42,57 @@ _SKIP_FILENAMES = {"_index.yaml", "INVENTORY.yaml"}
 
 
 def _load_overrides() -> dict:
-    """Load per-rule severity overrides. Returns {} if file missing."""
+    """Load rule-pack overrides — severity demotions and reference rewrites.
+
+    Returns a dict with two top-level keys:
+        rules:                  per-rule severity / reference overrides
+        references_rewrite:     global ref-text rewrites by exact match
+    """
     if not _OVERRIDES_PATH.exists():
-        return {}
+        return {"rules": {}, "references_rewrite": {}}
     try:
         doc = yaml.safe_load(_OVERRIDES_PATH.read_text()) or {}
-        return (doc.get("rules") or {})
+        return {
+            "rules": doc.get("rules") or {},
+            "references_rewrite": doc.get("references_rewrite") or {},
+        }
     except Exception:
-        return {}
+        return {"rules": {}, "references_rewrite": {}}
 
 
 _OVERRIDES = _load_overrides()
+_OVERRIDES_RULES = _OVERRIDES["rules"]
+_OVERRIDES_REWRITES = _OVERRIDES["references_rewrite"]
+
+
+def _apply_reference_rewrites(references: dict) -> dict:
+    """Apply global text-replacement overrides to references.
+
+    Used to fix upstream taxonomy drift (e.g. MITRE ATLAS renamed
+    'ML Supply Chain Compromise' to 'AI Supply Chain Compromise')
+    without editing upstream rule YAMLs.
+
+    The override file's `references_rewrite` block has shape:
+        references_rewrite:
+          mitre_atlas:
+            "AML.T0010 - ML Supply Chain Compromise":
+              "AML.T0010 - AI Supply Chain Compromise"
+
+    Lookup is exact-match on the cited string. Misses pass through
+    unchanged.
+    """
+    if not _OVERRIDES_REWRITES:
+        return references
+    out = dict(references)
+    for ref_field, rewrites in _OVERRIDES_REWRITES.items():
+        if not isinstance(rewrites, dict):
+            continue
+        existing = out.get(ref_field)
+        if not existing:
+            continue
+        if isinstance(existing, list):
+            out[ref_field] = [rewrites.get(str(v), v) for v in existing]
+    return out
 
 
 @dataclass
@@ -88,6 +129,16 @@ class RulePackRule:
     # Optional hints for callers
     file_types: List[str] = field(default_factory=list)
     remediation: str = ""
+
+    # M3 — NOVA evaluator metadata. Populated only for NOVA rules; empty
+    # for everything else. The evaluator uses these to run semantics/llm
+    # gates after the regex pre-match. See nova_evaluator.py.
+    upstream_semantics_patterns: List[dict] = field(default_factory=list)
+    upstream_llm_checks: List[dict] = field(default_factory=list)
+    # The pre-flooring severity from the .nov file, before A2/C1 demoted
+    # everything to LOW. Used to decide how high the evaluator can lift
+    # a finding when both gates pass. None = unknown (older imports).
+    upstream_severity: Optional[Severity] = None
 
 
 def _severity_from_string(s: str) -> Severity:
@@ -143,7 +194,12 @@ def _compile_patterns(patterns_field, *, static_only: bool = False) -> List[re.P
         if not pat:
             continue
         try:
-            compiled.append(re.compile(pat))
+            with warnings.catch_warnings():
+                # POSIX character classes like [[:alnum:]] in Gitleaks rules
+                # raise a FutureWarning under Python 3.12+ but compile fine.
+                # Suppress at the compile step — the regex still works.
+                warnings.simplefilter("ignore", FutureWarning)
+                compiled.append(re.compile(pat))
         except re.error:
             # Skip malformed regex — log at caller level if needed
             continue
@@ -214,9 +270,78 @@ def _parse_one(yaml_path: Path, *, static_only: bool = True) -> Optional[RulePac
     # Apply severity override from rule_pack_overrides.yaml (Fix 1 from
     # grand-run analysis — demote noisy rules without editing upstream).
     raw_severity = doc.get("severity_default") or doc.get("severity", "medium")
-    override = _OVERRIDES.get(aaid, {})
+    override = _OVERRIDES_RULES.get(aaid, {})
     if override and "severity" in override:
         raw_severity = override["severity"]
+
+    # Map Aguara's `targets:` field (file extension globs) into file_types.
+    # When the rule explicitly targets specific extensions, we'll filter
+    # at match time so that e.g. a rule targeting *.pth doesn't fire on
+    # Markdown documentation that mentions the same string.
+    targets_field = doc.get("targets") or []
+    file_types = list(doc.get("file_types") or targets_field)
+
+    # Build references with two layers of normalization:
+    #   1. text rewrites (e.g. ATLAS taxonomy name drift)
+    #   2. derived OWASP MCP Top 10 mapping (Roadmap B1)
+    references = _apply_reference_rewrites(dict(doc.get("references", {}) or {}))
+    if "owasp_mcp" not in references:
+        try:
+            from .owasp_mcp_mapping import owasp_mcp_for_pack_category, owasp_mcp_label
+            mcp_ids = owasp_mcp_for_pack_category(source_tool, str(doc.get("category", "")))
+            if mcp_ids:
+                # Format as "MCPNN - Title" to match the cited-name convention
+                # used for owasp_llm / owasp_agentic / mitre_atlas elsewhere.
+                references["owasp_mcp"] = [
+                    owasp_mcp_label(mid) or mid for mid in mcp_ids
+                ]
+        except Exception:
+            # Mapping module is optional infrastructure — never fail rule load
+            # over it. The validator catches missing mappings separately.
+            pass
+
+    # Same enrichment for OWASP Agentic Applications Top 10 (Roadmap B2).
+    # Independent from owasp_mcp: ASI taxonomy spans wider risks (inter-agent
+    # comms, memory poisoning, rogue agents) that MCP Top 10 does not cover.
+    if "owasp_agentic" not in references:
+        try:
+            from .owasp_agentic_mapping import owasp_agentic_for_pack_category, owasp_agentic_label
+            asi_ids = owasp_agentic_for_pack_category(source_tool, str(doc.get("category", "")))
+            if asi_ids:
+                references["owasp_agentic"] = [
+                    owasp_agentic_label(aid) or aid for aid in asi_ids
+                ]
+        except Exception:
+            pass
+
+    # B4 — AVID (AI Vulnerability Database) cross-link. SEP subcategories
+    # only; lifecycle stages and per-record AVID-YYYY-V/R IDs are out of
+    # scope. Independent from MCP/ASI: AVID groups by failure mechanism
+    # (Software Vulnerability vs Information Leak vs Model Bypass)
+    # whereas OWASP MCP/ASI group by agent-specific risk class.
+    if "avid" not in references:
+        try:
+            from .avid_mapping import avid_for_pack_category, avid_label
+            sep_ids = avid_for_pack_category(source_tool, str(doc.get("category", "")))
+            if sep_ids:
+                references["avid"] = [
+                    avid_label(sid) or sid for sid in sep_ids
+                ]
+        except Exception:
+            pass
+
+    # M3 — pull NOVA evaluator metadata if present. Non-NOVA rules don't
+    # set these fields, so the lists default to empty. Reading them
+    # unconditionally is cheap and uniform across rule packs.
+    upstream_semantics_patterns = list(doc.get("upstream_semantics_patterns") or [])
+    upstream_llm_checks = list(doc.get("upstream_llm_checks") or [])
+    upstream_sev_raw = doc.get("upstream_severity")
+    upstream_severity_obj: Optional[Severity] = None
+    if upstream_sev_raw:
+        try:
+            upstream_severity_obj = Severity(str(upstream_sev_raw).strip().lower())
+        except ValueError:
+            upstream_severity_obj = None
 
     return RulePackRule(
         agent_audit_id=aaid,
@@ -233,9 +358,12 @@ def _parse_one(yaml_path: Path, *, static_only: bool = True) -> Optional[RulePac
         source_upstream=source_upstream,
         asamm_primary=asamm.get("primary", ""),
         asamm_secondary=list(asamm.get("secondary", []) or []),
-        references=doc.get("references", {}) or {},
-        file_types=list(doc.get("file_types") or []),
+        references=references,
+        file_types=file_types,
         remediation=str(doc.get("remediation", "")),
+        upstream_semantics_patterns=upstream_semantics_patterns,
+        upstream_llm_checks=upstream_llm_checks,
+        upstream_severity=upstream_severity_obj,
     )
 
 

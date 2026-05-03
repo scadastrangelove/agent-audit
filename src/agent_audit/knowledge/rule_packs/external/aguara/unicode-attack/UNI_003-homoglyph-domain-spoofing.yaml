@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.unicode-attack.homoglyph-domain-spoofing
+# =============================================================
+# Adapted from UNI_003 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AI-04 (+AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: UNI_003
+  original_title: Homoglyph domain spoofing
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.unicode-attack.homoglyph-domain-spoofing
+title: Homoglyph domain spoofing
+description: Detects Cyrillic or Greek look-alike characters near URL patterns
+severity_default: medium
+category: unicode-attack
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AI-04
+  secondary:
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: '[\x{0400}-\x{04FF}][a-zA-Z].*?(://|\.com|\.org|\.net|\.io)'
+- type: regex
+  value: '[a-zA-Z][\x{0400}-\x{04FF}].*?(://|\.com|\.org|\.net|\.io)'
+- type: regex
+  value: '[\x{0370}-\x{03FF}][a-zA-Z].*?(://|\.com|\.org|\.net|\.io)'
+exclude_patterns: []
+remediation: Enforce ASCII-only characters in domain names and URLs. Use IDNA validation to reject mixed-script domains.
+examples:
+  true_positive:
+  - аpple.com
+  - gоogle.com
+  false_positive:
+  - example.com
+  - A legitimate ASCII-only domain.org

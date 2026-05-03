@@ -1,0 +1,58 @@
+# =============================================================
+# aguara.mcp-config.unrestricted-container-network-access
+# =============================================================
+# Adapted from MCPCFG_011 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-04 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCPCFG_011
+  original_title: Unrestricted container network access
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-config.unrestricted-container-network-access
+title: Unrestricted container network access
+description: 'Detects --network host or network_mode: host giving containers full host network access'
+severity_default: medium
+category: mcp-config
+audit_surface:
+- mcp_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.toml'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)--(network|net)[\s=]+host\b
+- type: regex
+  value: (?i)["']args["']\s*:.{0,200}--(network|net).{0,20}host
+- type: regex
+  value: (?i)network_mode\s*:\s*["']?host["']?
+exclude_patterns:
+- type: regex
+  value: (?i)--(network|net)[\s=]+none\b
+- type: regex
+  value: (?i)network_mode\s*:\s*["']?none["']?
+- type: regex
+  value: (?i)isolated\s+network
+remediation: Use bridge networking (default) or --network=none. Expose only required ports with -p instead of granting full
+  host network.
+examples:
+  true_positive:
+  - '"args": ["run", "--network=host", "mcp-server"]'
+  - 'network_mode: host'
+  false_positive:
+  - '"args": ["run", "--network=none", "mcp-server"]'
+  - Use an isolated network for the container

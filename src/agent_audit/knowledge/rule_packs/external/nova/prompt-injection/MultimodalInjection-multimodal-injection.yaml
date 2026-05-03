@@ -1,0 +1,64 @@
+# =============================================================
+# nova.prompt-injection.multimodal-injection
+# =============================================================
+# Adapted from MultimodalInjection (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: MultimodalInjection
+  original_title: MultimodalInjection
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 520b23d8-54c0-4ade-b8a7-cdc1a90c0def
+  upstream_author: '@fr0gger_'
+agent_audit_id: nova.prompt-injection.multimodal-injection
+title: Detects multimodal prompt injection attempts
+description: Detects multimodal prompt injection attempts
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: process (this|the) image|analyze (this|the) image|look at (this|the) image
+- type: regex
+  value: hidden (text|content|message|instruction)
+- type: regex
+  value: watermark|embedded text|text in image
+- type: regex
+  value: multimodal|cross-modal|multiple formats
+exclude_patterns: []
+upstream_severity: high
+upstream_semantics_patterns:
+- name: hidden_in_media
+  prose: instructions hidden in the image
+  threshold: 0.4
+- name: cross_modal_attack
+  prose: combine text and image instructions
+  threshold: 0.4
+upstream_llm_checks:
+- name: image_injection
+  prompt: Does this prompt involve processing images that might contain hidden instructions or malicious content?
+  threshold: 0.3
+upstream_condition_raw: (keywords.$image_process and (keywords.$hidden_content or keywords.$watermark)) or keywords.$multimodal
+  or semantics.$hidden_in_media or semantics.$cross_modal_attack or llm.$image_injection
+upstream_condition_mapping_note: explicit keyword refs only, any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

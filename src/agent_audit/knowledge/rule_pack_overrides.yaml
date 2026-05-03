@@ -51,3 +51,217 @@ rules:
     severity: low
     reason: "Prose-tone matcher; native AD-02 detectors catch the real cases structurally."
     evidence: "338 findings across 57 targets; top-1 in 9 repos that were otherwise clean."
+
+
+# References Rewrites — applied globally at load time before the OWASP MCP
+# enrichment runs. Used to track upstream taxonomy drift without editing
+# upstream rule YAMLs.
+#
+# How it works: each entry under `references_rewrite.<field>` is an
+# exact-match string replacement on items in that field of every rule's
+# references block. Misses pass through unchanged.
+#
+# Example: MITRE ATLAS renamed several techniques in the v5.x series as part
+# of an AI/ML wording sweep. Rather than editing 100+ ATR YAMLs, we map the
+# stale strings to the current ATLAS labels here. The B3 atlas-validate
+# tool was the trigger.
+#
+# When a rewrite is no longer needed (e.g. upstream rule YAML was contributed
+# back), remove the entry. Validator strict-mode is the regression gate.
+references_rewrite:
+  mitre_atlas:
+    # ATLAS v5.x AI/ML wording sweep (detected by atlas-validate v0.16.0)
+    "AML.T0010 - ML Supply Chain Compromise":
+      "AML.T0010 - AI Supply Chain Compromise"
+    "AML.T0018 - Backdoor ML Model":
+      "AML.T0018 - Manipulate AI Model"
+    "AML.T0024 - Exfiltration via ML Inference API":
+      "AML.T0024 - Exfiltration via AI Inference API"
+    "AML.T0040 - ML Model Inference API Access":
+      "AML.T0040 - AI Model Inference API Access"
+    "AML.T0044 - Full ML Model Access":
+      "AML.T0044 - Full AI Model Access"
+    "AML.T0046 - Spamming ML System with Chaff Data":
+      "AML.T0046 - Spamming AI System with Chaff Data"
+    "AML.T0047 - ML-Enabled Product or Service":
+      "AML.T0047 - AI-Enabled Product or Service"
+    # Note: AML.T0048 was substantively re-scoped, not just renamed.
+    # Old name "Adversarial Prompt Techniques" → new "External Harms".
+    # We rewrite for taxonomy consistency; revisit during quarterly refresh
+    # whether the underlying rules still belong under T0048.
+    "AML.T0048 - Adversarial Prompt Techniques":
+      "AML.T0048 - External Harms"
+    "AML.T0051 - Prompt Injection":
+      "AML.T0051 - LLM Prompt Injection"
+    "AML.T0051.001 - Indirect Prompt Injection":
+      "AML.T0051.001 - Indirect"
+    # Notable: T0053 was renamed from "LLM Plugin Compromise" to
+    # "AI Agent Tool Invocation" — the ATLAS team's recognition that
+    # MCP-style tool invocation is a distinct primitive.
+    "AML.T0053 - LLM Plugin Compromise":
+      "AML.T0053 - AI Agent Tool Invocation"
+    "AML.T0056 - LLM Meta Prompt Extraction":
+      "AML.T0056 - Extract LLM System Prompt"
+
+  # OWASP Top 10 for Agentic Applications wording sweep — drift from
+  # late-2025 drafts to the 1.0.0 release in December 2025. ATR rules
+  # were authored across both periods; some cite draft names. The
+  # rewrite normalizes everything to the 1.0.0 canonical names.
+  #
+  # Generated programmatically from owasp-agentic-validate first run
+  # (Roadmap B2). Dual entries (ASInn and ASInn:2026) cover both citation
+  # styles seen in the rule packs.
+  #
+  # Editorial note: a few entries are semantic re-categorizations rather
+  # than pure renames. For example, rules citing "ASI03 - Tool Misuse"
+  # would be more correctly re-mapped to ASI02 "Tool Misuse and
+  # Exploitation" in the 1.0.0 taxonomy. The rewrite below only normalizes
+  # within the existing ASI ID; deeper recategorization is deferred to a
+  # rule-pack-level review (out of scope for the references-rewrite layer).
+  owasp_agentic:
+    # ASI01 — Agent Goal Hijack (was several names including "Agent Behaviour Hijack")
+    "ASI01 - Agent Behaviour Hijack":
+      "ASI01 - Agent Goal Hijack"
+    "ASI01 - Prompt Injection":
+      "ASI01 - Agent Goal Hijack"
+    "ASI01 - Prompt and Instruction Injection":
+      "ASI01 - Agent Goal Hijack"
+    "ASI01:2026 - Agent Behaviour Hijack":
+      "ASI01 - Agent Goal Hijack"
+    "ASI01:2026 - Prompt Injection":
+      "ASI01 - Agent Goal Hijack"
+    "ASI01:2026 - Prompt and Instruction Injection":
+      "ASI01 - Agent Goal Hijack"
+    # ASI02 — Tool Misuse and Exploitation
+    "ASI02 - Excessive Agent Autonomy":
+      "ASI02 - Tool Misuse and Exploitation"
+    "ASI02 - Malicious Tool Integration":
+      "ASI02 - Tool Misuse and Exploitation"
+    "ASI02:2026 - Excessive Agent Autonomy":
+      "ASI02 - Tool Misuse and Exploitation"
+    "ASI02:2026 - Malicious Tool Integration":
+      "ASI02 - Tool Misuse and Exploitation"
+    # ASI03 — Identity and Privilege Abuse
+    "ASI03 - Agent Identity and Access Abuse":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03 - Cross-Agent Escalation":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03 - Data Exfiltration":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03 - Excessive Agency":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03 - Tool Misuse":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03 - Tool Poisoning":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03:2026 - Agent Identity and Access Abuse":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03:2026 - Cross-Agent Escalation":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03:2026 - Data Exfiltration":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03:2026 - Excessive Agency":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03:2026 - Tool Misuse":
+      "ASI03 - Identity and Privilege Abuse"
+    "ASI03:2026 - Tool Poisoning":
+      "ASI03 - Identity and Privilege Abuse"
+    # ASI04 — Agentic Supply Chain Vulnerabilities
+    "ASI04 - Cascading Trust Failures":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04 - Identity and Access Management Failures":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04 - Insufficient User Consent":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04 - Supply Chain Compromise":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04 - Supply Chain Vulnerabilities":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04 - Tool Misuse":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04 - Unauthorized Code Execution":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04 - Unbounded Consumption":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04:2026 - Cascading Trust Failures":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04:2026 - Identity and Access Management Failures":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04:2026 - Insufficient User Consent":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04:2026 - Supply Chain Compromise":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04:2026 - Supply Chain Vulnerabilities":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04:2026 - Tool Misuse":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04:2026 - Unauthorized Code Execution":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    "ASI04:2026 - Unbounded Consumption":
+      "ASI04 - Agentic Supply Chain Vulnerabilities"
+    # ASI05 — Unexpected Code Execution
+    "ASI05 - Supply Chain Compromise":
+      "ASI05 - Unexpected Code Execution"
+    "ASI05:2026 - Supply Chain Compromise":
+      "ASI05 - Unexpected Code Execution"
+    # ASI06 — Memory and Context Poisoning
+    "ASI06 - Data and Information Integrity Issues":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06 - Excessive Agency":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06 - Insufficient Access Controls":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06 - Memory & Context Poisoning":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06 - Rogue Actions":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06:2026 - Data and Information Integrity Issues":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06:2026 - Excessive Agency":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06:2026 - Insufficient Access Controls":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06:2026 - Memory & Context Poisoning":
+      "ASI06 - Memory and Context Poisoning"
+    "ASI06:2026 - Rogue Actions":
+      "ASI06 - Memory and Context Poisoning"
+    # ASI07 — Insecure Inter-Agent Communication
+    "ASI07 - Agent Data Leak":
+      "ASI07 - Insecure Inter-Agent Communication"
+    "ASI07 - Insecure Third-Party Agent":
+      "ASI07 - Insecure Inter-Agent Communication"
+    "ASI07 - Supply Chain":
+      "ASI07 - Insecure Inter-Agent Communication"
+    "ASI07:2026 - Agent Data Leak":
+      "ASI07 - Insecure Inter-Agent Communication"
+    "ASI07:2026 - Insecure Third-Party Agent":
+      "ASI07 - Insecure Inter-Agent Communication"
+    "ASI07:2026 - Supply Chain":
+      "ASI07 - Insecure Inter-Agent Communication"
+    # ASI08 — Cascading Failures
+    "ASI08 - Data Leakage":
+      "ASI08 - Cascading Failures"
+    "ASI08 - Excessive Autonomy":
+      "ASI08 - Cascading Failures"
+    "ASI08 - Output Handling":
+      "ASI08 - Cascading Failures"
+    "ASI08:2026 - Data Leakage":
+      "ASI08 - Cascading Failures"
+    "ASI08:2026 - Excessive Autonomy":
+      "ASI08 - Cascading Failures"
+    "ASI08:2026 - Output Handling":
+      "ASI08 - Cascading Failures"
+    # ASI09 — Human-Agent Trust Exploitation
+    "ASI09 - Human Trust Exploitation":
+      "ASI09 - Human-Agent Trust Exploitation"
+    "ASI09 - Inadequate Access Controls":
+      "ASI09 - Human-Agent Trust Exploitation"
+    "ASI09:2026 - Human Trust Exploitation":
+      "ASI09 - Human-Agent Trust Exploitation"
+    "ASI09:2026 - Inadequate Access Controls":
+      "ASI09 - Human-Agent Trust Exploitation"
+    # ASI10 — Rogue Agents
+    "ASI10 - Insufficient Human Oversight":
+      "ASI10 - Rogue Agents"
+    "ASI10:2026 - Insufficient Human Oversight":
+      "ASI10 - Rogue Agents"

@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.supply-chain-exfil.environment-variable-bulk-collection-with-network-send
+# =============================================================
+# Adapted from SC-EX-003 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AI-03 (+AG-04,AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SC-EX-003
+  original_title: Environment variable bulk collection with network send
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain-exfil.environment-variable-bulk-collection-with-network-send
+title: Environment variable bulk collection with network send
+description: Detects code that accesses os.environ in bulk (not single key) combined with HTTP transmission in the same file
+severity_default: critical
+category: supply-chain-exfil
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-04
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.py'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)(os\.environ\.items|dict\(os\.environ\)|json\.dumps\(os\.environ|os\.environ\.copy)
+- type: regex
+  value: (?i)(requests\.(post|put)|urllib\.request\.urlopen|httpx\.(post|put)|aiohttp\.ClientSession|fetch\()
+exclude_patterns: []
+remediation: Do not transmit environment variables over the network. Access only the specific variables you need with os.environ.get().
+examples:
+  true_positive:
+  - env_data = json.dumps(dict(os.environ)); requests.post(url, data=env_data)
+  - 'payload = {k: v for k, v in os.environ.items()}; httpx.post(url, json=payload)'
+  false_positive:
+  - api_key = os.environ.get("OPENAI_API_KEY")
+  - os.environ["PATH"] = new_path

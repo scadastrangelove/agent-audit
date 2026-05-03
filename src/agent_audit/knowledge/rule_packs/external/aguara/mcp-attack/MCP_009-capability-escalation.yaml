@@ -1,0 +1,55 @@
+# =============================================================
+# aguara.mcp-attack.capability-escalation
+# =============================================================
+# Adapted from MCP_009 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-05,AI-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCP_009
+  original_title: Capability escalation
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-attack.capability-escalation
+title: Capability escalation
+description: Detects excessive or dangerous capability requests in MCP configurations
+severity_default: high
+category: mcp-attack
+audit_surface:
+- mcp_manifest
+- tool_description
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-05
+  - AI-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)["']?(capabilities|permissions)["']?\s*[:=]\s*[^\n]{0,20}\b(all|admin|unrestricted|root|superuser|full_access|god_mode)\b
+- type: regex
+  value: (?i)request\w*\s+(unrestricted|admin|root|superuser)\s+(capabilities|permissions|access)
+exclude_patterns: []
+remediation: Request only the minimum capabilities needed. Replace broad grants like 'all' with explicit, scoped permissions.
+examples:
+  true_positive:
+  - '"capabilities": ["all"]'
+  - '"permissions": "admin"'
+  - request unrestricted capabilities
+  false_positive:
+  - '"capabilities": ["read_files", "search"]'
+  - The tool has limited access permissions
+  - '"accessType": "OPEN", "entryPointAccess": "ALL"'
+  - 'Scope: Available in all projects'

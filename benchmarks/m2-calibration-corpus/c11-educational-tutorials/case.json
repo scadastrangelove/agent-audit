@@ -1,0 +1,16 @@
+{
+  "id": "c11-educational-tutorials",
+  "title": "Educational repo via tutorials/ path; demotion via educational_heavy (not red_team_heavy)",
+  "agent": "claude_code",
+  "description": "Variant of c4 — uses educational_heavy tag pathway instead of red_team_heavy. Project layout has majority of instruction files under tutorials/, triggering educational_heavy via the >50% threshold. Verifies the demotion correlator fires on either of the two educational tags.",
+  "source_type": "synthetic_calibration",
+  "tags": ["educational", "tutorials", "demotion", "true-link", "tpr-robustness"],
+  "m2_expected": {
+    "expected_correlator": "repo_educational_context_demotes_runtime_advice",
+    "expected_link": true,
+    "expected_repo_tags": ["educational_heavy", "has_instruction_files"],
+    "expected_dynamic_finding_kind": "dangerous_recommendation",
+    "expected_proximity_minimum": 1,
+    "rationale": "tutorials/ path triggers educational_heavy when >50% of instruction files live there. Per §5.4, either educational_heavy OR red_team_heavy is sufficient; this case exercises the educational_heavy branch."
+  }
+}

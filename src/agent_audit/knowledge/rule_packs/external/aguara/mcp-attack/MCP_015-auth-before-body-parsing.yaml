@@ -1,0 +1,55 @@
+# =============================================================
+# aguara.mcp-attack.auth-before-body-parsing
+# =============================================================
+# Adapted from MCP_015 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-04 (+AG-05,AI-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCP_015
+  original_title: Auth-before-body parsing
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-attack.auth-before-body-parsing
+title: Auth-before-body parsing
+description: Detects handlers that parse the request body before authenticating the caller, enabling slow-body denial-of-service
+  attacks
+severity_default: medium
+category: mcp-attack
+audit_surface:
+- mcp_manifest
+- tool_description
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-05
+  - AI-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(json\.Decode|ReadAll|ioutil\.ReadAll|request\.body|req\.body)\b.{0,80}(auth|verify|token|session|credential)
+- type: regex
+  value: (?i)(parse|read|decode|consume)\s+(the\s+)?(request\s+)?(body|payload|content)\s+(before|prior|then|and then)\s+(auth|verify|validat|check)
+- type: regex
+  value: (?i)(body|payload)\s+(is\s+)?(parsed|read|decoded|consumed)\s+(before|without|prior).{0,30}(auth|verif|token)
+exclude_patterns:
+- type: regex
+  value: (?i)(auth|verify|token|session).{0,60}(json\.Decode|ReadAll|parse.{0,20}body)
+- type: regex
+  value: (?i)(first|before|prior).{0,30}(auth|verify).{0,30}(then|before).{0,30}(parse|read|decode)
+remediation: Authenticate the caller before parsing the request body. Use middleware to enforce auth checks first.
+examples:
+  true_positive:
+  - Use json.Decode to parse the request body and then verify the auth token
+  - Parse the request body before authentication to extract the user ID
+  - The body is parsed before verifying the session token
+  false_positive:
+  - Verify the auth token first, then json.Decode the body
+  - First authenticate the caller, then parse the request body
+  - Authentication middleware runs before body parsing

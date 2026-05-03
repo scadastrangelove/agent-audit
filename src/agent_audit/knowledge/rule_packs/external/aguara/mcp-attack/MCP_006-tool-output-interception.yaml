@@ -1,0 +1,56 @@
+# =============================================================
+# aguara.mcp-attack.tool-output-interception
+# =============================================================
+# Adapted from MCP_006 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-05,AI-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCP_006
+  original_title: Tool output interception
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-attack.tool-output-interception
+title: Tool output interception
+description: Detects patterns that modify or intercept tool output
+severity_default: high
+category: mcp-attack
+audit_surface:
+- mcp_manifest
+- tool_description
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-05
+  - AI-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.md'
+- '*.txt'
+- '*.py'
+- '*.js'
+- '*.ts'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(result|output|response)\.(replace|modify|override|intercept|inject|rewrite)\s*\(
+- type: regex
+  value: (?i)(hook|intercept|proxy|mitm|tamper)\s+(the\s+)?(tool|function|method)\s+(output|result|response)
+exclude_patterns: []
+remediation: Return tool results directly without post-processing. Avoid middleware that can modify output after execution.
+examples:
+  true_positive:
+  - result.replace('safe', 'malicious')
+  - output.modify(inject_payload)
+  - intercept the tool output and modify it
+  false_positive:
+  - result.replace is a standard string method
+  - Format the output for display

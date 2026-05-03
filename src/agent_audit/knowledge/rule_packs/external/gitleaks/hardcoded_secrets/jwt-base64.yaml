@@ -1,0 +1,70 @@
+# =============================================================
+# gitleaks.hardcoded_secrets.jwt-base64
+# =============================================================
+# Adapted from jwt-base64 (https://github.com/gitleaks/gitleaks)
+# MIT (c) 2019 Zachary Rice
+# Source: Gitleaks
+# Severity: high  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: gitleaks
+  original_id: jwt-base64
+  original_title: Detected a Base64-encoded JSON Web Token, posing a risk of exposing encoded authentication and data exchange
+    information
+  source_version: git-8863af47d64c
+  import_date: '2026-05-03'
+  upstream: https://github.com/gitleaks/gitleaks
+  license: MIT (c) 2019 Zachary Rice
+agent_audit_id: gitleaks.hardcoded_secrets.jwt-base64
+title: Detected a Base64-encoded JSON Web Token, posing a risk of exposing encoded authentication and data exchange information
+description: Detected a Base64-encoded JSON Web Token, posing a risk of exposing encoded authentication and data exchange
+  information.
+severity_default: high
+category: hardcoded_secrets
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- tool_description
+- agent_task_config
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: All Gitleaks rules map to AG-03 secret exposure.
+targets:
+- '*.md'
+- '*.txt'
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.toml'
+- '*.env'
+- '*.env.*'
+- '*.cfg'
+- '*.ini'
+match_mode: any
+patterns:
+- type: regex
+  value: \bZXlK(?:(?P<alg>aGJHY2lPaU)|(?P<apu>aGNIVWlPaU)|(?P<apv>aGNIWWlPaU)|(?P<aud>aGRXUWlPaU)|(?P<b64>aU5qUWlP)|(?P<crit>amNtbDBJanBi)|(?P<cty>amRIa2lPaU)|(?P<epk>bGNHc2lPbn)|(?P<enc>bGJtTWlPaU)|(?P<jku>cWEzVWlPaU)|(?P<jwk>cWQyc2lPb)|(?P<iss>cGMzTWlPaU)|(?P<iv>cGRpSTZJ)|(?P<kid>cmFXUWlP)|(?P<key_ops>clpYbGZiM0J6SWpwY)|(?P<kty>cmRIa2lPaUp)|(?P<nonce>dWIyNWpaU0k2)|(?P<p2c>d01tTWlP)|(?P<p2s>d01uTWlPaU)|(?P<ppt>d2NIUWlPaU)|(?P<sub>emRXSWlPaU)|(?P<svt>emRuUWlP)|(?P<tag>MFlXY2lPaU)|(?P<typ>MGVYQWlPaUp)|(?P<url>MWNtd2l)|(?P<use>MWMyVWlPaUp)|(?P<ver>MlpYSWlPaU)|(?P<version>MlpYSnphVzl1SWpv)|(?P<x>NElqb2)|(?P<x5c>NE5XTWlP)|(?P<x5t>NE5YUWlPaU)|(?P<x5ts256>NE5YUWpVekkxTmlJNkl)|(?P<x5u>NE5YVWlPaU)|(?P<zip>NmFYQWlPaU))[a-zA-Z0-9\/\\_+\-\r\n]{40,}={0,2}
+exclude_patterns:
+- type: contains
+  value: AKIAIOSFODNN7EXAMPLE
+- type: contains
+  value: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+- type: regex
+  value: (?:ghp|gho|ghu|ghs|ghr|github_pat)_[xX]{20,}
+- type: regex
+  value: (?i)<\s*your[\s_-]*(?:api[\s_-]*)?key[\s_-]*here\s*>
+- type: regex
+  value: (?i)\bYOUR_[A-Z_]{2,30}_(?:KEY|TOKEN|SECRET)\b
+- type: regex
+  value: (?i)\bxxx+-xxx+-xxx+\b
+- type: contains
+  value: 'BEGIN OPENSSH PRIVATE KEY-----
+
+    b3BlbnNza'
+- type: contains
+  value: sk-proj-EXAMPLE
+upstream_entropy_threshold: 2.0

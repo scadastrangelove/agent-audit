@@ -1,0 +1,52 @@
+# =============================================================
+# aguara.command-execution.dynamic-code-evaluation
+# =============================================================
+# Adapted from CMDEXEC_002 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AD-02 (+AG-02,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CMDEXEC_002
+  original_title: Dynamic code evaluation
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.command-execution.dynamic-code-evaluation
+title: Dynamic code evaluation
+description: Detects eval() or exec() used for dynamic code execution
+severity_default: medium
+category: command-execution
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AD-02
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)\beval\s*\(\s*["'$a-z]
+- type: regex
+  value: (?i)\bexec\s*\(\s*["'$a-z(f]
+exclude_patterns: []
+remediation: Replace eval/exec with safer alternatives. Parse structured data with json.loads() or ast.literal_eval().
+examples:
+  true_positive:
+  - eval(user_input)
+  - exec(f"import os; os.system('{cmd}')")
+  false_positive:
+  - See the eval command documentation
+  - exec into the container
+  - exec sp_executesql
+  - '`${$json.field}` is a template expression'

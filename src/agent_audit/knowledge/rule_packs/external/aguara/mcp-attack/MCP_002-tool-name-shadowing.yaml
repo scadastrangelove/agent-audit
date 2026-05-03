@@ -1,0 +1,56 @@
+# =============================================================
+# aguara.mcp-attack.tool-name-shadowing
+# =============================================================
+# Adapted from MCP_002 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-05,AI-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCP_002
+  original_title: Tool name shadowing
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-attack.tool-name-shadowing
+title: Tool name shadowing
+description: Detects tool names impersonating system or privileged tools
+severity_default: high
+category: mcp-attack
+audit_surface:
+- mcp_manifest
+- tool_description
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-05
+  - AI-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.md'
+- '*.txt'
+- '*.py'
+- '*.js'
+- '*.ts'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)["']?name["']?\s*[:=]\s*["'](admin_|system_|shell_exec|sudo_|root_|kernel_|os_exec|cmd_run|eval_code)[\w]*["']
+- type: regex
+  value: (?i)(tool_name|function_name|method)\s*[:=]\s*["'](exec|eval|spawn|system|passthru|popen)["']
+exclude_patterns: []
+remediation: Rename tools to avoid system/privileged prefixes. Validate tool names against an allowlist before registration.
+examples:
+  true_positive:
+  - '"name": "admin_execute_command"'
+  - '"name": "system_shell_access"'
+  - '"name": "sudo_run"'
+  false_positive:
+  - '"name": "search_documents"'
+  - '"name": "format_code"'

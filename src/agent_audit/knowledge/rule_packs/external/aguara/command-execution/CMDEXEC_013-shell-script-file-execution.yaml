@@ -1,0 +1,56 @@
+# =============================================================
+# aguara.command-execution.shell-script-file-execution
+# =============================================================
+# Adapted from CMDEXEC_013 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AD-02 (+AG-02,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CMDEXEC_013
+  original_title: Shell script file execution
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.command-execution.shell-script-file-execution
+title: Shell script file execution
+description: Detects execution of shell script files via bash/sh command or direct invocation
+severity_default: low
+category: command-execution
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AD-02
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)\b(bash|sh|zsh)\s+\S+\.(sh|bash)\b
+- type: regex
+  value: (?i)\./\S+\.(sh|bash)\b
+- type: regex
+  value: (?i)\bsource\s+\S+\.(sh|bash)\b
+exclude_patterns: []
+remediation: Review shell scripts before execution. Verify file integrity with checksums and ensure scripts come from trusted
+  sources.
+examples:
+  true_positive:
+  - bash install.sh
+  - ./deploy.sh
+  - source setup.sh
+  - sh scripts/build.sh
+  false_positive:
+  - See the install.sh script for details
+  - The deploy.sh file contains configuration
+  - Edit setup.sh to change parameters

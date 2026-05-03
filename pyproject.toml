@@ -6,7 +6,7 @@
 
 [project]
 name = "agent-audit"
-version = "0.15.0"
+version = "0.18.0"
 description = "Forensic auditor for local AI coding agents (Claude Code, Codex) + project surface scanner with AST-aware native detectors"
 requires-python = ">=3.9"
 authors = [

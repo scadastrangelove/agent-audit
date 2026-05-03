@@ -1,0 +1,68 @@
+# =============================================================
+# gitleaks.hardcoded_secrets.sendgrid-api-token
+# =============================================================
+# Adapted from sendgrid-api-token (https://github.com/gitleaks/gitleaks)
+# MIT (c) 2019 Zachary Rice
+# Source: Gitleaks
+# Severity: high  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: gitleaks
+  original_id: sendgrid-api-token
+  original_title: Detected a SendGrid API token, posing a risk of unauthorized email service operations and data exposure
+  source_version: git-8863af47d64c
+  import_date: '2026-05-03'
+  upstream: https://github.com/gitleaks/gitleaks
+  license: MIT (c) 2019 Zachary Rice
+agent_audit_id: gitleaks.hardcoded_secrets.sendgrid-api-token
+title: Detected a SendGrid API token, posing a risk of unauthorized email service operations and data exposure
+description: Detected a SendGrid API token, posing a risk of unauthorized email service operations and data exposure.
+severity_default: high
+category: hardcoded_secrets
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- tool_description
+- agent_task_config
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: All Gitleaks rules map to AG-03 secret exposure.
+targets:
+- '*.md'
+- '*.txt'
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.toml'
+- '*.env'
+- '*.env.*'
+- '*.cfg'
+- '*.ini'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)\b(SG\.[a-z0-9=_\-\.]{66})(?:[\x60'"\s;]|\\[nr]|$)
+exclude_patterns:
+- type: contains
+  value: AKIAIOSFODNN7EXAMPLE
+- type: contains
+  value: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+- type: regex
+  value: (?:ghp|gho|ghu|ghs|ghr|github_pat)_[xX]{20,}
+- type: regex
+  value: (?i)<\s*your[\s_-]*(?:api[\s_-]*)?key[\s_-]*here\s*>
+- type: regex
+  value: (?i)\bYOUR_[A-Z_]{2,30}_(?:KEY|TOKEN|SECRET)\b
+- type: regex
+  value: (?i)\bxxx+-xxx+-xxx+\b
+- type: contains
+  value: 'BEGIN OPENSSH PRIVATE KEY-----
+
+    b3BlbnNza'
+- type: contains
+  value: sk-proj-EXAMPLE
+upstream_entropy_threshold: 2.0

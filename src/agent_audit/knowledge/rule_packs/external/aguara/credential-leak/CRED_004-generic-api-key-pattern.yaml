@@ -1,0 +1,61 @@
+# =============================================================
+# aguara.credential-leak.generic-api-key-pattern
+# =============================================================
+# Adapted from CRED_004 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CRED_004
+  original_title: Generic API key pattern
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.credential-leak.generic-api-key-pattern
+title: Generic API key pattern
+description: Detects generic API key assignments with real-looking values
+severity_default: medium
+category: credential-leak
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.py'
+- '*.js'
+- '*.ts'
+- '*.go'
+- '*.java'
+- '*.rb'
+- '*.sh'
+- '*.env'
+- '*.yaml'
+- '*.yml'
+- '*.json'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(api[_-]?key|api[_-]?secret|apikey)\s*[=:]\s*["']?[a-zA-Z0-9_\-]{32,}["']?
+- type: regex
+  value: (?i)(access[_-]?token|auth[_-]?token)\s*[=:]\s*["']?[a-zA-Z0-9_\-\.]{32,}["']?
+exclude_patterns: []
+remediation: Replace hardcoded keys with environment variables or a secrets manager. Add the file to .gitignore if it contains
+  secrets.
+examples:
+  true_positive:
+  - API_KEY=abcdef1234567890abcdef1234567890ab
+  - 'auth_token: eyJhbGciOiJIUzI1NiJ9.abcdefghijklmnop'
+  false_positive:
+  - api_key = os.getenv('API_KEY')
+  - 'api_key: your-api-key-here'
+  - API_KEY=sk-your-key-here

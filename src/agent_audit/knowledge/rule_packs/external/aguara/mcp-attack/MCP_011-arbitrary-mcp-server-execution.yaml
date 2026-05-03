@@ -1,0 +1,55 @@
+# =============================================================
+# aguara.mcp-attack.arbitrary-mcp-server-execution
+# =============================================================
+# Adapted from MCP_011 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-05,AI-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCP_011
+  original_title: Arbitrary MCP server execution
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-attack.arbitrary-mcp-server-execution
+title: Arbitrary MCP server execution
+description: Detects execution of MCP servers from arbitrary paths, URLs, or user-controlled commands
+severity_default: high
+category: mcp-attack
+audit_surface:
+- mcp_manifest
+- tool_description
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-05
+  - AI-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+- '*.json'
+- '*.yaml'
+- '*.yml'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)--stdio\s+["']?(bun|node|python|npx|deno)\s+run\s+
+- type: regex
+  value: (?i)(call|connect|invoke)\s+https?://[^\s]+[/.]mcp[./]
+- type: regex
+  value: (?i)(call|invoke|use)\s+.{0,30}--stdio\s+["']?[a-z]
+exclude_patterns: []
+remediation: Only connect to MCP servers from a trusted allowlist. Never execute server binaries from user-supplied paths
+  or URLs.
+examples:
+  true_positive:
+  - mcporter call --stdio "bun run ./server.ts" scrape url=https://example.com
+  - mcporter call https://api.example.com/mcp.fetch url:https://example.com
+  false_positive:
+  - Connect to the configured MCP server
+  - bun run dev

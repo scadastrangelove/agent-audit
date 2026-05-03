@@ -1,0 +1,54 @@
+# =============================================================
+# aguara.exfiltration.unrestricted-email-or-messaging-access
+# =============================================================
+# Adapted from EXFIL_012 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AI-03 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXFIL_012
+  original_title: Unrestricted email or messaging access
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.exfiltration.unrestricted-email-or-messaging-access
+title: Unrestricted email or messaging access
+description: Detects CLI tools granting unrestricted send/read access to email or messaging
+severity_default: medium
+category: exfiltration
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(gmail|email|mail|smtp|imap)\s+(send|compose|reply|forward)\s+(--to|--subject|--body|--cc)
+- type: regex
+  value: (?i)\w+\s+send\s+--to\s+\S+@\S+\s+--subject
+- type: regex
+  value: (?i)(gmail|outlook)\s+(search|read|list|fetch)\s+.{0,30}(--max|newer_than|all)
+exclude_patterns: []
+remediation: Restrict email/messaging access to specific recipients via an allowlist. Require user confirmation before sending.
+examples:
+  true_positive:
+  - gog gmail send --to a@b.com --subject "Hi" --body "Hello"
+  - gog gmail search 'newer_than:7d' --max 10
+  - himalaya send --to user@example.com --subject "Report"
+  false_positive:
+  - Configure your email client settings
+  - The SMTP server address is mail.example.com
+  - Send email platform for developers
+  - Send message to a channel using the API

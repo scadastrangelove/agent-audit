@@ -1,0 +1,56 @@
+# =============================================================
+# aguara.command-execution.mcp-code-execution-tool
+# =============================================================
+# Adapted from CMDEXEC_010 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AD-02 (+AG-02,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CMDEXEC_010
+  original_title: MCP code execution tool
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.command-execution.mcp-code-execution-tool
+title: MCP code execution tool
+description: Detects MCP tools that execute arbitrary code
+severity_default: medium
+category: command-execution
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AD-02
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+- '*.json'
+- '*.yaml'
+- '*.yml'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)["']?(executeCode|run_code|execute_code|eval_code|run_command|execute_command)["']?
+- type: regex
+  value: (?i)(mcp|tool)\s+.{0,30}(execute|run)\s+(arbitrary|any|user)\s+(code|command|script)
+exclude_patterns: []
+remediation: Sandbox code execution tools with restricted permissions. Use allowlists for permitted operations and enforce
+  resource limits.
+examples:
+  true_positive:
+  - '"executeCode": runs arbitrary code in sandbox'
+  - The run_code tool executes user-provided scripts
+  - This MCP tool can execute any code on the host
+  false_positive:
+  - The code execution is sandboxed and safe
+  - Run code examples from the documentation
+  - execute_script is a Home Assistant service call

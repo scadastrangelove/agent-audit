@@ -4,14 +4,14 @@
 # Adapted from THIRDPARTY_008 (https://github.com/garagon/aguara)
 # Apache-2.0 (c) 2026 garagon
 # Source: Aguara
-# Severity: medium  |  ASAMM: AD-01 (+AI-01,AG-02)
+# Severity: medium  |  ASAMM: AI-03 (+AG-02)
 # =============================================================
 external_source:
   tool: aguara
   original_id: THIRDPARTY_008
   original_title: Script or asset loaded without integrity check
-  source_version: HEAD 2026-04-21
-  import_date: '2026-04-21'
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
   upstream: https://github.com/garagon/aguara
   license: Apache-2.0 (c) 2026 garagon
 agent_audit_id: aguara.third-party-content.script-or-asset-loaded-without-integrity-check
@@ -20,12 +20,11 @@ description: Detects scripts or assets loaded from CDNs or external sources with
 severity_default: medium
 category: third-party-content
 audit_surface:
-- session_tool_output
-- session_retrieved_content
+- instruction_file
+- skill_md
 asamm:
-  primary: AD-01
+  primary: AI-03
   secondary:
-  - AI-01
   - AG-02
   mapping_confidence: category-default
   notes: Category-level default at import. Review per rule.

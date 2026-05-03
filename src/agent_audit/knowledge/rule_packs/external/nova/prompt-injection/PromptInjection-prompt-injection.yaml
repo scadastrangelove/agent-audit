@@ -1,0 +1,50 @@
+# =============================================================
+# nova.prompt-injection.prompt-injection
+# =============================================================
+# Adapted from PromptInjection (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: PromptInjection
+  original_title: PromptInjection
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 1bf39921-aef7-4193-b3e6-957280ccad33
+  upstream_author: Thomas Roccia
+agent_audit_id: nova.prompt-injection.prompt-injection
+title: Detects common prompt injection attempts
+description: Detects common prompt injection attempts
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)ignore\ previous\ instructions
+exclude_patterns: []
+upstream_severity: medium
+upstream_semantics_patterns:
+- name: injection1
+  prose: detect attempts to bypass system instructions
+  threshold: 0.3
+upstream_condition_raw: semantics.$injection* or keywords.$bypass*
+upstream_condition_mapping_note: explicit keyword refs only, any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

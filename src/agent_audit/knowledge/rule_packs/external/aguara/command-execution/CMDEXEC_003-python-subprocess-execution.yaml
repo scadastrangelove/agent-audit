@@ -1,0 +1,52 @@
+# =============================================================
+# aguara.command-execution.python-subprocess-execution
+# =============================================================
+# Adapted from CMDEXEC_003 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AD-02 (+AG-02,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CMDEXEC_003
+  original_title: Python subprocess execution
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.command-execution.python-subprocess-execution
+title: Python subprocess execution
+description: Detects Python subprocess and os.system calls for command execution in skill descriptions
+severity_default: medium
+category: command-execution
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AD-02
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)subprocess\.(run|call|Popen|check_output|check_call)\s*\(
+- type: regex
+  value: (?i)os\.(system|popen|exec[lv]?p?)\s*\(
+exclude_patterns: []
+remediation: Use subprocess with explicit argument lists instead of shell strings. Never pass unsanitized user input to os.system()
+  or subprocess.
+examples:
+  true_positive:
+  - subprocess.run(['bash', '-c', cmd])
+  - os.system(command)
+  - os.popen('ls').read()
+  false_positive:
+  - Use subprocess for running external tools
+  - The os.path.join function concatenates paths

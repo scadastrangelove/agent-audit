@@ -1,0 +1,53 @@
+# =============================================================
+# aguara.supply-chain.container-bind-mount-to-sensitive-host-path
+# =============================================================
+# Adapted from SUPPLY_015 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SUPPLY_015
+  original_title: Container bind mount to sensitive host path
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain.container-bind-mount-to-sensitive-host-path
+title: Container bind mount to sensitive host path
+description: Detects Docker or container bind mounts mapping sensitive host directories that could enable sandbox escape
+severity_default: high
+category: supply-chain
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- plugin_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(-v|--volume)\s+["']?/:["']?/
+- type: regex
+  value: (?i)(-v|--volume)\s+["']?/(etc|root|home|proc|sys|var/run)\b
+- type: regex
+  value: (?i)--mount\s+[^\n]*source=/(etc|root|home|proc|sys|var/run)\b
+- type: regex
+  value: (?i)docker\s+run\s+[^\n]*--privileged\b
+exclude_patterns: []
+remediation: Restrict container volumes to project-specific directories. Never mount the host root or sensitive paths.
+examples:
+  true_positive:
+  - docker run -v /:/mnt myimage
+  - docker run -v /etc:/host-etc:ro myimage
+  - docker run --mount type=bind,source=/home,target=/data myimage
+  - docker run --privileged myimage
+  false_positive:
+  - docker run -v ./data:/app/data myimage
+  - docker run -v myvolume:/data myimage

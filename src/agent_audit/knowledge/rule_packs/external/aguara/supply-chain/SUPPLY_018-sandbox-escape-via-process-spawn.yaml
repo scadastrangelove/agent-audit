@@ -1,0 +1,56 @@
+# =============================================================
+# aguara.supply-chain.sandbox-escape-via-process-spawn
+# =============================================================
+# Adapted from SUPPLY_018 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AG-04 (+AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SUPPLY_018
+  original_title: Sandbox escape via process spawn
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain.sandbox-escape-via-process-spawn
+title: Sandbox escape via process spawn
+description: Detects spawn or exec from a sandboxed context that may inherit unrestricted permissions, allowing sandbox escape
+severity_default: critical
+category: supply-chain
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- plugin_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(exec|spawn|popen|system|subprocess|child_process|os\.system)\b.{0,60}(sandbox|restricted|isolated|jailed|contained)
+- type: regex
+  value: (?i)(sandbox|restricted|isolated|jailed|contained).{0,60}(exec|spawn|popen|system|subprocess|child_process|os\.system)\b
+- type: regex
+  value: (?i)(escape|break\s*out|bypass).{0,30}(sandbox|container|jail|isolation).{0,30}(process|spawn|exec|fork)
+- type: regex
+  value: (?i)(child|spawned|forked)\s+(process|worker).{0,40}(unrestricted|elevated|inherit|full)\s+(permission|access|privilege)
+exclude_patterns:
+- type: regex
+  value: (?i)(prevent|block|detect|mitigat|reject|restrict|deny).{0,40}(sandbox.{0,20}(escape|spawn|exec)|process.{0,20}sandbox)
+remediation: Sandbox spawned processes with seccomp, namespaces, or drop all capabilities before exec.
+examples:
+  true_positive:
+  - exec('/bin/sh') from the sandboxed plugin context
+  - The sandbox allows subprocess.Popen to spawn unrestricted processes
+  - Escape the sandbox isolation via process spawn
+  - Child process inherits unrestricted permissions from the sandbox
+  false_positive:
+  - Block exec calls to prevent sandbox escape
+  - Restrict process spawning inside the sandbox
+  - Detect and deny subprocess execution in sandboxed contexts

@@ -1,0 +1,53 @@
+# =============================================================
+# aguara.mcp-attack.approval-execution-binding-gap
+# =============================================================
+# Adapted from MCP_013 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-05,AI-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCP_013
+  original_title: Approval-execution binding gap
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-attack.approval-execution-binding-gap
+title: Approval-execution binding gap
+description: Detects tools where user approval and command execution are decoupled, enabling TOCTOU substitution of the approved
+  action
+severity_default: high
+category: mcp-attack
+audit_surface:
+- mcp_manifest
+- tool_description
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-05
+  - AI-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(ask|prompt|confirm|approve|consent).{0,30}(then|before).{0,20}(run|exec|execute|spawn|system|shell)
+- type: regex
+  value: (?i)(run|execute).{0,30}(previously|already|pre)[- ]?(approved|confirmed|authorized)
+- type: regex
+  value: (?i)(cached|stored|saved|queued)\s+(approval|confirmation).{0,30}(execute|run|spawn)
+exclude_patterns: []
+remediation: Bind approval to the exact command hash. Re-verify the action at execution time to prevent TOCTOU substitution.
+examples:
+  true_positive:
+  - Ask the user for confirmation, then execute the command
+  - Run the previously approved shell command
+  - Use the cached approval to execute the pending operation
+  false_positive:
+  - The approval process must verify the exact command before execution
+  - Each command requires a separate approval

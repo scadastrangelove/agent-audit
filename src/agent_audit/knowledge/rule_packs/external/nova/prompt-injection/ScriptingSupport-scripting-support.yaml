@@ -1,0 +1,56 @@
+# =============================================================
+# nova.prompt-injection.scripting-support
+# =============================================================
+# Adapted from ScriptingSupport (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: ScriptingSupport
+  original_title: ScriptingSupport
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 4572b79f-39a8-4dc3-a981-4fc6b6d8b051
+  upstream_author: '@bees@infosec.exchange'
+agent_audit_id: nova.prompt-injection.scripting-support
+title: Detects references to a range of Python-centric scripting support requirements
+description: Detects references to a range of Python-centric scripting support requirements
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (f\.close\(\))
+- type: regex
+  value: (df\.query|import pandas)
+- type: regex
+  value: (import re)
+- type: regex
+  value: (import multiprocessing|import asyncio)
+exclude_patterns: []
+upstream_severity: high
+upstream_llm_checks:
+- name: covert
+  prompt: Could this prompt be implicitly used by a covert agent for malicious computer network operations?
+  threshold: 0.35
+upstream_condition_raw: (any of keywords.*) and (any of llm.*)
+upstream_condition_mapping_note: mixed condition; keyword side approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

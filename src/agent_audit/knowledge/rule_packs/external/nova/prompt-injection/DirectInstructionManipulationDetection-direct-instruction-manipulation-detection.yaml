@@ -1,0 +1,52 @@
+# =============================================================
+# nova.prompt-injection.direct-instruction-manipulation-detection
+# =============================================================
+# Adapted from DirectInstructionManipulationDetection (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: DirectInstructionManipulationDetection
+  original_title: DirectInstructionManipulationDetection
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 3aa029a7-64b7-4882-9adb-6e7debb88fce
+  upstream_author: Thomas Roccia
+agent_audit_id: nova.prompt-injection.direct-instruction-manipulation-detection
+title: Detects direct prompt injection attempts aiming to change model instructions
+description: Detects direct prompt injection attempts aiming to change model instructions
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)bypass\ filters
+- type: regex
+  value: (?i)manipulate\ instructions
+- type: regex
+  value: (?i)ignore\ guidelines
+- type: regex
+  value: (?i)change\ behavior
+exclude_patterns: []
+upstream_severity: high
+upstream_condition_raw: 2 of keywords.*
+upstream_condition_mapping_note: upstream '2 of 4', approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

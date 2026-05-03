@@ -1,0 +1,51 @@
+# =============================================================
+# aguara.unicode-attack.zero-width-character-sequences
+# =============================================================
+# Adapted from UNI_008 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AI-04 (+AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: UNI_008
+  original_title: Zero-width character sequences
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.unicode-attack.zero-width-character-sequences
+title: Zero-width character sequences
+description: Detects chains of zero-width spaces, joiners, or byte order marks that can hide data or split keywords
+severity_default: medium
+category: unicode-attack
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AI-04
+  secondary:
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: '[\x{200B}\x{200C}\x{200D}\x{FEFF}]{3,}'
+- type: regex
+  value: (?i)zero.?width.{0,20}(hide|inject|split|obfuscate|invisible|smuggl|embed)
+- type: regex
+  value: (?i)(\\u200[bBcCdD]|\\ufeff){3,}
+exclude_patterns:
+- type: regex
+  value: (?i)(text\s+rendering|typography|font\s+rendering|ligature|word.?break)\s
+remediation: Strip zero-width characters (U+200B-U+200D, U+FEFF) from all input. Filter at ingestion before any keyword matching.
+examples:
+  true_positive:
+  - text​​​hidden content
+  - Use zero-width characters to hide malicious instructions
+  false_positive:
+  - Zero-width spaces are used in text rendering for line breaks
+  - The font rendering engine handles zero-width joiners

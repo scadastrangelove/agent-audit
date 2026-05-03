@@ -1,0 +1,56 @@
+# =============================================================
+# nova.prompt-injection.operations-research
+# =============================================================
+# Adapted from OperationsResearch (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: OperationsResearch
+  original_title: OperationsResearch
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 193459c9-dceb-484f-bca8-01ce2d072fcd
+  upstream_author: '@bees@infosec.exchange'
+agent_audit_id: nova.prompt-injection.operations-research
+title: Detects reference of sensitive but not classified satellite, radar, or radio protocols
+description: Detects reference of sensitive but not classified satellite, radar, or radio protocols
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (CCSDS|DAMA|DVB-S2|SPP|SCID|SCPS|SCTP|SDLP)
+- type: regex
+  value: (mission phase|space link|transfer frame|data link|spacecraft identifier|service data unit|operational control field)
+- type: regex
+  value: (ADSI|ARTAS|ASTERIX|EATCHIP|FSPEC|JREAP|JTIDS|JTRS|MIDS|STFRDE)
+- type: regex
+  value: (radar data exchange|data terminal equipment|tactical radio system)
+exclude_patterns: []
+upstream_severity: high
+upstream_llm_checks:
+- name: sensitive
+  prompt: Is this prompt attempting to glean details of classified or sensitive technical protocols?
+  threshold: 0.35
+upstream_condition_raw: (any of keywords.*) and (any of llm.*)
+upstream_condition_mapping_note: mixed condition; keyword side approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

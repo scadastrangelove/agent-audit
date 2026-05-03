@@ -1,0 +1,57 @@
+# =============================================================
+# aguara.credential-leak.oauth-pkce-verifier-exposure
+# =============================================================
+# Adapted from CRED_020 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CRED_020
+  original_title: OAuth PKCE verifier exposure
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.credential-leak.oauth-pkce-verifier-exposure
+title: OAuth PKCE verifier exposure
+description: Detects OAuth flows where the PKCE code_verifier is stored in or transmitted via URL parameters, state, redirect
+  URIs, or logs
+severity_default: high
+category: credential-leak
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(state|redirect_uri|callback_url|return_url|query|url_param)\s*[=:].{0,40}code_verifier
+- type: regex
+  value: (?i)code_verifier\s*[=:].{0,30}(state|url|query|param|redirect)
+- type: regex
+  value: (?i)code_verifier.{0,30}(redirect_uri|state|query.param|url.param|callback)
+- type: regex
+  value: (?i)(log|print|console|debug|trace|stdout|stderr)\s*[.(].{0,30}code_verifier
+- type: regex
+  value: (?i)code_verifier.{0,20}(visible|exposed|leaked|sent|passed|included).{0,20}(url|redirect|state|browser|history)
+exclude_patterns: []
+remediation: Store the PKCE code_verifier in server-side session storage only. Never pass it via URL parameters, state, or
+  logs.
+examples:
+  true_positive:
+  - 'state = JSON.stringify({code_verifier: verifier})'
+  - Store the code_verifier in the redirect_uri query params
+  - console.log('PKCE verifier:', code_verifier)
+  - The code_verifier is exposed in the browser URL bar
+  false_positive:
+  - Store the code_verifier in server-side session storage
+  - The PKCE code_verifier must never be transmitted in URLs

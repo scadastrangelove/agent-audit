@@ -38,6 +38,22 @@ CANONICAL_CLASS_LABELS = {
 }
 
 
+# OWASP MCP Top 10 mapping (Roadmap B1) — sits alongside the canonical-class
+# system above as a secondary taxonomy for findings. Useful for security teams
+# that already use the OWASP MCP framework for governance reporting.
+def owasp_mcp_for_finding(rule_id: str) -> List[str]:
+    """Return the OWASP MCP IDs associated with a finding's rule.
+
+    Lazy import keeps finding_dedup importable in environments where the
+    vendored OWASP MCP index is missing (e.g. very stripped-down deploys).
+    """
+    try:
+        from .knowledge.owasp_mcp_mapping import owasp_mcp_for_rule
+        return owasp_mcp_for_rule(rule_id)
+    except Exception:
+        return []
+
+
 CANONICAL_CLASS_PREFIXES = (
     ("asamm.AD-02.broad-action-without-approval", "broad_external_action_without_approval"),
     ("asamm.AD-02.autonomous-loop-with-writes", "autonomous_execution_or_looping"),

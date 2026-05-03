@@ -1,0 +1,53 @@
+# =============================================================
+# nova.prompt-injection.user-event-research
+# =============================================================
+# Adapted from UserEventResearch (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: UserEventResearch
+  original_title: UserEventResearch
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: a9eb13b3-3c05-4975-9c63-6564ecfd9847
+  upstream_author: '@bees@infosec.exchange'
+agent_audit_id: nova.prompt-injection.user-event-research
+title: Performing research on how to examine and identify incriminating user events on Windows using scripts
+description: Performing research on how to examine and identify incriminating user events on Windows using scripts
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (attempt made to logon|local group membership|authentication failed|scheduled task was created|permissions were changed|replay
+    attack|logging service has shut down|assigned new logon|suspicious behavior)
+- type: regex
+  value: (logman query|EventLog\-Application|EVENT_ENABLE_PROPERTY_SID|PSEtwLogProvider|EventWriteTransfer|WEVT_TEMPLATE|WMI\\Autologger)
+exclude_patterns: []
+upstream_severity: high
+upstream_llm_checks:
+- name: investigate
+  prompt: Is this prompt attempting to learn how to discover incriminating user events in Windows logs?
+  threshold: 0.35
+upstream_condition_raw: (any of keywords.*) and (any of llm.*)
+upstream_condition_mapping_note: mixed condition; keyword side approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

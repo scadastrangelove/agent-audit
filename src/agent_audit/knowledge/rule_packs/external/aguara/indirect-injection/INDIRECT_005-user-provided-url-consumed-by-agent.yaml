@@ -1,0 +1,51 @@
+# =============================================================
+# aguara.indirect-injection.user-provided-url-consumed-by-agent
+# =============================================================
+# Adapted from INDIRECT_005 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AI-04 (+AI-05,AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: INDIRECT_005
+  original_title: User-provided URL consumed by agent
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.indirect-injection.user-provided-url-consumed-by-agent
+title: User-provided URL consumed by agent
+description: Detects skills where user-provided URLs are consumed and processed by the agent
+severity_default: low
+category: indirect-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(user|input|provided|given|specified).{0,5}(url|URL|link|endpoint)\s+.{0,30}(fetch|scrape|crawl|read|process|consume|download|access)
+- type: regex
+  value: (?i)(fetch|scrape|crawl|read|process|download|access).{0,30}(user|input|provided|given|specified).{0,5}(url|URL|link)
+- type: regex
+  value: (?i)(fetch|scrape|read|process).{0,30}(content|page|data|html).{0,30}(from|at)\s+(the\s+)?(url|URL|link|endpoint)\s+(the\s+)?user
+exclude_patterns: []
+remediation: Sandbox fetched content from user-provided URLs; parse data only, never execute or follow instructions from it.
+examples:
+  true_positive:
+  - Fetch the content at the user-provided URL
+  - Process the user's URL and extract data
+  false_positive:
+  - Ask the user for their preferred settings

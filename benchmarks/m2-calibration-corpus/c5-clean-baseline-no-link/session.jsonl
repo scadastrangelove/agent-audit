@@ -1,0 +1,4 @@
+{"type":"user","sessionId":"c5-clean-baseline-no-link","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-19T10:00:00Z","message":{"role":"user","content":[{"type":"text","text":"run the tests"}]}}
+{"type":"assistant","sessionId":"c5-clean-baseline-no-link","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-19T10:00:02Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"pytest tests/ -q"}}]}}
+{"type":"user","sessionId":"c5-clean-baseline-no-link","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-19T10:00:08Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"42 passed in 1.2s"}]}}
+{"type":"assistant","sessionId":"c5-clean-baseline-no-link","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-19T10:00:09Z","message":{"role":"assistant","content":[{"type":"text","text":"All 42 tests pass."}]}}

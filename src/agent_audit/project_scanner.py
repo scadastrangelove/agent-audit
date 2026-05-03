@@ -19,6 +19,7 @@ a matching surface are applied. This keeps execution bounded even for
 """
 from __future__ import annotations
 
+import fnmatch
 import os
 import re
 from dataclasses import dataclass, field
@@ -184,12 +185,53 @@ def _safe_read(path: Path, max_bytes: int = 256 * 1024) -> Optional[str]:
         return None
 
 
-def _match_rule_in_text(rule: RulePackRule, text: str) -> Optional[re.Match]:
+def _file_matches_targets(file_path: Optional[Path], file_types: List[str]) -> bool:
+    """Return True iff the file's extension matches at least one target glob.
+
+    `file_types` mirrors Aguara's upstream `targets:` field. Examples:
+      ['*.md', '*.txt']    → match .md and .txt files
+      ['*.pth']            → match only .pth files
+      ['setup.py']         → match files literally named setup.py
+      ['*.env.*']          → match dotted-extension patterns
+
+    When `file_types` is empty, the rule has no extension restriction and
+    we apply it everywhere — preserving prior behaviour for rules that
+    never declared `targets`.
+
+    When `file_path` is None (e.g. matching from a string buffer that
+    isn't a file), we behave as if `file_types` were empty: don't filter.
+    """
+    if not file_types:
+        return True
+    if file_path is None:
+        return True
+    name = file_path.name
+    for pat in file_types:
+        try:
+            if fnmatch.fnmatch(name, pat):
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
+
+def _match_rule_in_text(
+    rule: RulePackRule,
+    text: str,
+    file_path: Optional[Path] = None,
+) -> Optional[re.Match]:
     """Return the first matching pattern, or None.
 
     Semantics match the 'any' condition used by ATR / Aguara / Cisco PG:
     a rule fires if ANY of its patterns matches and NO exclude pattern matches.
+
+    When the rule declares `file_types` (mapped from upstream `targets:`),
+    skip files whose extension does not match — without this guard, rules
+    intended for `.pth` Python path files fire on `.md` documentation that
+    happens to contain `import` or `from`.
     """
+    if not _file_matches_targets(file_path, rule.file_types):
+        return None
     # Exclude gate: if any exclude matches, suppress
     for exc in rule.exclude_patterns:
         if exc.search(text):
@@ -320,7 +362,7 @@ def scan_project(
                 else:
                     match_text = text
 
-                m = _match_rule_in_text(rule, match_text)
+                m = _match_rule_in_text(rule, match_text, file_path=file_path)
                 if m is None:
                     continue
 

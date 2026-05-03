@@ -1,0 +1,44 @@
+# =============================================================
+# aguara.credential-leak.jwt-token
+# =============================================================
+# Adapted from CRED_010 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CRED_010
+  original_title: JWT token
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.credential-leak.jwt-token
+title: JWT token
+description: Detects JWT tokens
+severity_default: medium
+category: credential-leak
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}
+exclude_patterns: []
+remediation: Never hardcode JWT tokens. Fetch them at runtime via your auth flow and store in memory only. Revoke any exposed
+  tokens.
+examples:
+  true_positive:
+  - 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U'
+  false_positive:
+  - 'JWT tokens follow the format: header.payload.signature'

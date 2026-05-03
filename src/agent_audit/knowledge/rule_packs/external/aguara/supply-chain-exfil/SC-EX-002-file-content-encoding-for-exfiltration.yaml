@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.supply-chain-exfil.file-content-encoding-for-exfiltration
+# =============================================================
+# Adapted from SC-EX-002 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AI-03 (+AG-04,AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SC-EX-002
+  original_title: File content encoding for exfiltration
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain-exfil.file-content-encoding-for-exfiltration
+title: File content encoding for exfiltration
+description: Detects file contents being base64-encoded, hex-encoded, or encrypted before transmission, a common supply-chain
+  exfiltration pattern
+severity_default: critical
+category: supply-chain-exfil
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-04
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.py'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)(base64\.(b64encode|encode)|binascii\.hexlify|AES\.new|Cipher\(|PKCS1_OAEP|\.encrypt\()
+- type: regex
+  value: (?i)(open|read_text|read_bytes)\s*\(
+exclude_patterns: []
+remediation: Do not encode or encrypt file contents for external transmission. If encryption is needed for legitimate storage,
+  use well-known libraries with documented key management.
+examples:
+  true_positive:
+  - data = base64.b64encode(open("/home/user/.ssh/id_rsa").read().encode())
+  - content = open("/tmp/secrets").read(); cipher = AES.new(key, AES.MODE_CBC); cipher.encrypt(content)
+  false_positive:
+  - base64.b64encode(json.dumps(config).encode())

@@ -1,0 +1,16 @@
+{
+  "id": "c15-skills-only-no-approval-tag",
+  "title": "Repo ships a benign skill (has_skills); autonomy finding fires; approval_gap correlator must not fire",
+  "agent": "claude_code",
+  "description": "False-positive guard: presence of skills alone is NOT a risk tag. The §5.1 correlator specifically requires has_broad_action_without_approval — having any skill at all is too broad. This case verifies the precise tag requirement and prevents 'has_skills triggers everything' regression.",
+  "source_type": "synthetic_calibration",
+  "tags": ["skills-only", "negative", "true-negative", "fpr-robustness"],
+  "m2_expected": {
+    "expected_correlator": null,
+    "expected_link": false,
+    "expected_repo_tags": ["has_skills", "has_instruction_files"],
+    "expected_dynamic_finding_kind": "autonomy_loop",
+    "expected_proximity_minimum": null,
+    "rationale": "has_skills is a structural fact — most projects with agent harnesses have skills. The §5.1 correlator must specifically check has_broad_action_without_approval, not has_skills. The dynamic side has an autonomy finding but the precise static condition is missing → no aggregate."
+  }
+}

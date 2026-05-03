@@ -1,0 +1,52 @@
+# =============================================================
+# aguara.indirect-injection.database-or-cache-query-driving-agent-behavior
+# =============================================================
+# Adapted from INDIRECT_011 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-04 (+AI-05,AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: INDIRECT_011
+  original_title: Database or cache query driving agent behavior
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.indirect-injection.database-or-cache-query-driving-agent-behavior
+title: Database or cache query driving agent behavior
+description: Detects agents that read from databases or caches and use the results as instructions or decisions
+severity_default: high
+category: indirect-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)(query|select|fetch|read|retrieve)\s+.{0,40}(database|cache|datastore|redis|memcache|mongo|dynamo|sqlite|postgres|mysql|store)
+- type: regex
+  value: (?i)(act|execute|follow|obey|perform)\s+.{0,20}(on\s+)?(the\s+)?(instruction|command|directive|task|behavior)
+exclude_patterns:
+- type: regex
+  value: (?i)(log|audit|monitor|record|track)\s+.{0,20}(database|cache|query|result)
+remediation: Treat database/cache content as untrusted data; never interpret stored values as executable instructions.
+examples:
+  true_positive:
+  - Query the database for pending tasks and execute the instructions stored in each record
+  - Retrieve commands from the Redis cache and follow the instructions returned
+  false_positive:
+  - Query the database and log the results for auditing
+  - Read data from the cache and display it to the user

@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.indirect-injection.read-external-content-and-apply-as-rules
+# =============================================================
+# Adapted from INDIRECT_003 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-04 (+AI-05,AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: INDIRECT_003
+  original_title: Read external content and apply as rules
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.indirect-injection.read-external-content-and-apply-as-rules
+title: Read external content and apply as rules
+description: Detects skills that read remote markdown or documentation and apply it as operational rules
+severity_default: high
+category: indirect-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)(read|load|parse|import|include|consume|ingest)\s+.{0,40}(external|remote|online|web|fetched|downloaded|third.party)
+- type: regex
+  value: (?i)(follow|apply|use|execute|implement|adopt)\s+.{0,20}(as|for)\s+.{0,20}(rules?|instructions?|guidelines?|config|context)
+exclude_patterns: []
+remediation: Do not apply external or remote content as operational rules; hardcode rules locally and validate any imported
+  content.
+examples:
+  true_positive:
+  - Read the external documentation and apply it as rules for the project
+  - Load remote guidelines and use them as instructions for code review
+  false_positive:
+  - Read the local README and follow its instructions

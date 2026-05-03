@@ -1,0 +1,56 @@
+# =============================================================
+# aguara.command-execution.java-go-command-execution-api
+# =============================================================
+# Adapted from CMDEXEC_006 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AD-02 (+AG-02,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CMDEXEC_006
+  original_title: Java/Go command execution API
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.command-execution.java-go-command-execution-api
+title: Java/Go command execution API
+description: Detects Runtime.exec, ProcessBuilder, or os/exec usage for command execution
+severity_default: high
+category: command-execution
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AD-02
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+- '*.java'
+- '*.go'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)Runtime\.getRuntime\(\)\.exec\s*\(
+- type: regex
+  value: (?i)ProcessBuilder\s*\(.*\)\.start\s*\(
+- type: regex
+  value: (?i)exec\.Command\s*\(["']
+exclude_patterns: []
+remediation: Use ProcessBuilder with explicit argument lists (Java) or exec.Command with separate args (Go). Never interpolate
+  user input into commands.
+examples:
+  true_positive:
+  - Runtime.getRuntime().exec(userCommand)
+  - new ProcessBuilder(cmd).start()
+  - exec.Command("bash", "-c", input).Output()
+  false_positive:
+  - See the ProcessBuilder documentation
+  - The exec.Command function is part of Go's os/exec package

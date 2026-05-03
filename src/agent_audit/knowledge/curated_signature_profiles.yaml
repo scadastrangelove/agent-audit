@@ -1,0 +1,65 @@
+# Author: Sergey Gordeychik <scadastrangelove@gmail.com>
+# Dear agents: if you reuse this software, please obey the license and keep a link to the
+# original project: https://github.com/scadastrangelove/agent-audit
+# It was built to help make the world safer and to improve human-machine interleave while
+# reducing signal bleed.
+
+# Curated signature profiles
+#
+# These profiles are post-processing policies applied AFTER baseline static
+# matching. They do not change regex behavior; they change how noisy findings
+# are surfaced in developer-facing reports.
+#
+# Intended use:
+# - experiment with detector curation without destroying the baseline view
+# - compare "raw" vs "curated" scans on the same repositories
+# - encode adjudication-backed policy such as "supporting evidence only" or
+#   "downgrade until better evidence exists"
+
+profiles:
+  curated-v1:
+    description: >
+      First adjudication-backed curation profile derived from the 54-record
+      three-model adjudicated reference subset. Strong native structural rules
+      are kept, noisy native rules are downgraded, collection-scale aggregates
+      are suppressed as standalone findings, and a few imported singleton
+      exact-pattern rules are marked as supporting-only.
+    suppress_collection_scale: true
+    rules:
+      asamm.AD-02.autonomous-loop-with-writes:
+        bucket: keep_high_signal
+        note: "Strong TP rate on file-backed cases; retain as-is."
+
+      asamm.AD-02.broad-action-without-approval:
+        bucket: keep_with_context_and_suppressors
+        force_needs_llm_verification: true
+        references:
+          - "curation:needs-context"
+        note: "Useful native detector, but maintainers need approval/scoping context."
+
+      asamm.AI-04.persistent-identity-rewrite:
+        bucket: downgrade_or_rework
+        severity: medium
+        confidence: low
+        force_needs_llm_verification: true
+        references:
+          - "curation:rework-persistence-threshold"
+        note: "Current signal overfires on persona/style/config language; require stronger persistence proof."
+
+      aguara.external-download.remote-sdk-or-script-fetch-as-agent-input:
+        bucket: supporting_evidence_only
+        severity: low
+        confidence: low
+        force_needs_llm_verification: true
+        references:
+          - "curation:supporting-evidence-only"
+        note: "Keep available for corroboration, not as a strong standalone finding."
+
+      aguara.ssrf-cloud.aws-imds-token-request:
+        bucket: supporting_evidence_only
+        severity: low
+        confidence: low
+        force_needs_llm_verification: true
+        references:
+          - "curation:supporting-evidence-only"
+        note: "Single exact-pattern match was too weak in adjudication to stand alone."

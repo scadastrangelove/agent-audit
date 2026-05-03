@@ -1,0 +1,53 @@
+# =============================================================
+# aguara.unicode-attack.punycode-domains
+# =============================================================
+# Adapted from UNI_007 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AI-04 (+AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: UNI_007
+  original_title: Punycode domains
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.unicode-attack.punycode-domains
+title: Punycode domains
+description: Detects punycode-encoded domains in tool or skill definitions
+severity_default: medium
+category: unicode-attack
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AI-04
+  secondary:
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)\bxn--[a-z0-9-]+\.[a-z]{2,}
+- type: regex
+  value: (?i)(url|domain|host|endpoint|server)\s*[:=]\s*["']?[^"'\s]*xn--
+exclude_patterns: []
+remediation: Replace punycode (xn--) domains with their decoded Unicode form and verify the intended domain. Use an allowlist
+  for trusted domains.
+examples:
+  true_positive:
+  - 'url: xn--80ak6aa92e.com'
+  - Connect to xn--pple-43d.com
+  false_positive:
+  - Punycode is an encoding used for internationalized domain names

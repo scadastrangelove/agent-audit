@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.indirect-injection.remote-config-controlling-agent-behavior
+# =============================================================
+# Adapted from INDIRECT_004 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-04 (+AI-05,AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: INDIRECT_004
+  original_title: Remote config controlling agent behavior
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.indirect-injection.remote-config-controlling-agent-behavior
+title: Remote config controlling agent behavior
+description: Detects remote configuration files or URLs that control how the agent behaves
+severity_default: high
+category: indirect-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(remote|external|cloud|hosted)\s+(config|configuration|settings|rules?)\s+.{0,30}(controls?|determines?|drives?|governs?|defines?)
+- type: regex
+  value: (?i)(download|fetch|pull|sync)\s+.{0,30}(config|configuration|settings)\s+from\s+.{0,20}(url|http|api|server|remote)
+exclude_patterns: []
+remediation: Store configuration locally and pin to a known-good version; never let remote config alter agent behavior at
+  runtime.
+examples:
+  true_positive:
+  - Remote configuration controls agent behavior at runtime
+  - Download config from the API server before starting
+  false_positive:
+  - Edit the local config file to change settings

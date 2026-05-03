@@ -1,0 +1,61 @@
+# =============================================================
+# aguara.prompt-injection.runtime-events-as-user-role-prompt
+# =============================================================
+# Adapted from PROMPT_INJECTION_018 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-04 (+AI-05)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: PROMPT_INJECTION_018
+  original_title: Runtime events as user-role prompt
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.prompt-injection.runtime-events-as-user-role-prompt
+title: Runtime events as user-role prompt
+description: Detects when runtime events or notifications are concatenated into the user-role prompt instead of being routed
+  through system context
+severity_default: high
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+- '*.py'
+- '*.js'
+- '*.ts'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(event|notification|webhook|callback)\s+(data|payload|body|content).{0,40}(user\s+(message|prompt|role|input)|append.{0,20}(prompt|message))
+- type: regex
+  value: (?i)(append|concat|inject|insert|add|prepend)\s+.{0,30}(event|notification|webhook|callback).{0,30}(prompt|user.?message|user.?input|conversation)
+- type: regex
+  value: (?i)(messages?\.append|messages?\.push|messages?\s*\+=|messages?\s*\.insert).{0,40}(event|notification|webhook|alert|callback)
+- type: regex
+  value: (?i)["']?role["']?\s*[:=]\s*["']user["'].{0,60}(event|notification|webhook|callback|alert)
+exclude_patterns: []
+remediation: Route runtime events through the system context, not the user-role prompt. Sanitize event payloads before passing
+  to the model.
+examples:
+  true_positive:
+  - Append the event data to the user message before sending to the model
+  - Concat notification payload into the user prompt for context
+  - 'messages.append({''role'': ''user'', ''content'': event_notification})'
+  - Insert webhook callback data into the user input stream
+  false_positive:
+  - Route events to the system prompt for context
+  - Events are processed by the server, not sent to the model
+  - Log notification data for audit purposes

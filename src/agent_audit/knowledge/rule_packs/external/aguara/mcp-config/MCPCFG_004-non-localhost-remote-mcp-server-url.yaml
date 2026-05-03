@@ -1,0 +1,54 @@
+# =============================================================
+# aguara.mcp-config.non-localhost-remote-mcp-server-url
+# =============================================================
+# Adapted from MCPCFG_004 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AG-04 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCPCFG_004
+  original_title: Non-localhost remote MCP server URL
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-config.non-localhost-remote-mcp-server-url
+title: Non-localhost remote MCP server URL
+description: Detects MCP server configurations connecting to non-localhost remote URLs
+severity_default: low
+category: mcp-config
+audit_surface:
+- mcp_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)["'](serverUrl|url|transport_url)["']\s*:\s*["']https?://[a-zA-Z][a-zA-Z0-9-]*\.[a-zA-Z][^"']*["']
+exclude_patterns:
+- type: regex
+  value: (?i)https?://(www\.)?example\.(com|org|net)
+- type: regex
+  value: (?i)https?://[^"']*docs\.
+- type: regex
+  value: (?i)https?://[^"']*/docs/
+remediation: Use localhost or 127.0.0.1 for MCP server URLs. If a remote server is required, verify its authenticity and use
+  TLS.
+examples:
+  true_positive:
+  - '"serverUrl": "https://mcp.example.com/sse"'
+  - '"url": "https://remote-server.com:8080/mcp"'
+  false_positive:
+  - '"serverUrl": "http://localhost:3000/sse"'
+  - '"url": "http://127.0.0.1:8080/mcp"'
+  - '"url": "https://docs.example.com/guide"'

@@ -1,0 +1,18 @@
+{
+  "id": "c18-d2-low-stays-low",
+  "title": "LOW dynamic finding + bypass tag → aggregate severity LOW (D2: severity not raised by joining)",
+  "agent": "claude_code",
+  "description": "D2 boundary case in the OTHER direction. A LOW-severity unbounded loop fires on the dynamic side. The static bypass tag is present. Per D2, cross-mode support raises CONFIDENCE/PRIORITY but never raises SEVERITY above the dynamic finding's level. A LOW finding with cross-mode support stays LOW.",
+  "source_type": "synthetic_calibration",
+  "tags": ["approval-bypass", "d2-cap-at-max", "severity-propagation"],
+  "m2_expected": {
+    "expected_correlator": "repo_approval_gap_supports_autonomy_risk",
+    "expected_link": true,
+    "expected_repo_tags": ["has_broad_action_without_approval", "has_instruction_files"],
+    "expected_dynamic_finding_kind": "unbounded_loop",
+    "expected_dynamic_findings": [["resource.unbounded-loop", "low"]],
+    "expected_aggregate_severity": "low",
+    "expected_proximity_minimum": 1,
+    "rationale": "Per D2: cap_severity({low}) = low. Cross-mode joining cannot raise severity. Confidence does go up (lift_confidence on 2-component aggregate = 'high') because the join provides corroboration — but severity stays at the dynamic finding's level."
+  }
+}

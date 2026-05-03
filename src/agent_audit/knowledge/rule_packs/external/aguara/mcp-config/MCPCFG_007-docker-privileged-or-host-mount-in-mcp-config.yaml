@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.mcp-config.docker-privileged-or-host-mount-in-mcp-config
+# =============================================================
+# Adapted from MCPCFG_007 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCPCFG_007
+  original_title: Docker privileged or host mount in MCP config
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-config.docker-privileged-or-host-mount-in-mcp-config
+title: Docker privileged or host mount in MCP config
+description: Detects Docker containers in MCP configs with privileged mode or dangerous host mounts
+severity_default: high
+category: mcp-config
+audit_surface:
+- mcp_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)["']command["']\s*:\s*["']docker["'].{0,200}--privileged
+- type: regex
+  value: (?i)["']args["']\s*:.{0,200}-v.{0,30}/(var/run/docker|etc/|root/|home/)
+- type: regex
+  value: (?i)-v.{0,10}/:/[a-zA-Z]
+exclude_patterns: []
+remediation: Remove --privileged flag and host mounts. Use specific --cap-add flags and named volumes with minimal scope instead.
+examples:
+  true_positive:
+  - '"command": "docker", "args": ["run", "--privileged", "mcp-server"]'
+  - '"args": ["run", "-v", "/var/run/docker.sock:/var/run/docker.sock", "mcp-img"]'
+  - '"args": ["run", "-v", "/:/host", "mcp-server"]'
+  false_positive:
+  - '"command": "docker", "args": ["run", "-p", "3000:3000", "mcp-server"]'

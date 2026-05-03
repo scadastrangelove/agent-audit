@@ -1,0 +1,3 @@
+{"type":"user","sessionId":"c14-vendor-skill-pruned","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-28T10:00:00Z","message":{"role":"user","content":[{"type":"text","text":"install dependencies"}]}}
+{"type":"assistant","sessionId":"c14-vendor-skill-pruned","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-28T10:00:01Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"npm install"}}]}}
+{"type":"user","sessionId":"c14-vendor-skill-pruned","cwd":"__CASE_PROJECT__","gitBranch":"main","timestamp":"2026-04-28T10:00:02Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"added 12 packages"}]}}

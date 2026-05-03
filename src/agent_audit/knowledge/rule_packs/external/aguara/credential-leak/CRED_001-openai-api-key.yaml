@@ -1,0 +1,47 @@
+# =============================================================
+# aguara.credential-leak.openai-api-key
+# =============================================================
+# Adapted from CRED_001 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CRED_001
+  original_title: OpenAI API key
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.credential-leak.openai-api-key
+title: OpenAI API key
+description: Detects OpenAI API keys
+severity_default: critical
+category: credential-leak
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: sk-[a-zA-Z0-9]{20,}T3BlbkFJ[a-zA-Z0-9]{20,}
+- type: regex
+  value: sk-proj-[a-zA-Z0-9_-]{40,}
+- type: regex
+  value: sk-[a-zA-Z0-9]{48}
+exclude_patterns: []
+remediation: Move the API key to an environment variable or secrets manager. Reference it as $ENV_VAR instead of hardcoding.
+examples:
+  true_positive:
+  - OPENAI_API_KEY=sk-proj-abc123def456ghi789jkl012mno345pqr678stu901vwx
+  false_positive:
+  - Set your OPENAI_API_KEY=sk-your-key-here

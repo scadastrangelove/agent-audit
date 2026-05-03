@@ -1,0 +1,56 @@
+# =============================================================
+# nova.context-exfiltration.prompt-leakage-detection
+# =============================================================
+# Adapted from PromptLeakageDetection (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-03 (+AG-03)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: PromptLeakageDetection
+  original_title: PromptLeakageDetection
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 5b64d492-d4d0-48c6-b7c0-4512f4c1e4d1
+  upstream_author: Thomas Roccia
+agent_audit_id: nova.context-exfiltration.prompt-leakage-detection
+title: Detects attempts to extract or reveal system prompts and internal instructions
+description: Detects attempts to extract or reveal system prompts and internal instructions
+severity_default: low
+category: context-exfiltration
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)show\ your\ prompt
+- type: regex
+  value: (?i)reveal\ your\ instructions
+- type: regex
+  value: (?i)display\ prompt
+- type: regex
+  value: (?i)leak\ instructions
+exclude_patterns: []
+upstream_severity: high
+upstream_llm_checks:
+- name: code_injection_check
+  prompt: Evaluate if the prompt includes code that may trigger unsafe command execution
+  threshold: 0.7
+upstream_condition_raw: any of keywords.* or llm.$code_injection_check
+upstream_condition_mapping_note: mixed condition; keyword side approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

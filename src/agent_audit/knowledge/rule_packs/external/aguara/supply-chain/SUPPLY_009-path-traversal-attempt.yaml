@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.supply-chain.path-traversal-attempt
+# =============================================================
+# Adapted from SUPPLY_009 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SUPPLY_009
+  original_title: Path traversal attempt
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain.path-traversal-attempt
+title: Path traversal attempt
+description: Detects path traversal patterns targeting sensitive files, including URL-encoded variants
+severity_default: high
+category: supply-chain
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- plugin_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)\.\./\.\./\.\.(.*/(etc/(passwd|shadow|hosts)|windows/(system32|win\.ini)))
+- type: regex
+  value: (?i)(\.\.%2[fF]){2,}
+- type: regex
+  value: (?i)%2[eE]%2[eE][%/]
+exclude_patterns: []
+remediation: Sanitize file paths with realpath and reject any resolved path outside the allowed directory.
+examples:
+  true_positive:
+  - ../../../../etc/passwd
+  - ..%2f..%2f..%2fetc/shadow
+  false_positive:
+  - Go to the parent directory with cd ..
+  - See ../../docs/guide.md for details
+  - 'Reference: ../../../docs/testing.md'

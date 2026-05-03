@@ -1,0 +1,69 @@
+# =============================================================
+# gitleaks.hardcoded_secrets.jwt
+# =============================================================
+# Adapted from jwt (https://github.com/gitleaks/gitleaks)
+# MIT (c) 2019 Zachary Rice
+# Source: Gitleaks
+# Severity: high  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: gitleaks
+  original_id: jwt
+  original_title: Uncovered a JSON Web Token, which may lead to unauthorized access to web applications and sensitive user
+    data
+  source_version: git-8863af47d64c
+  import_date: '2026-05-03'
+  upstream: https://github.com/gitleaks/gitleaks
+  license: MIT (c) 2019 Zachary Rice
+agent_audit_id: gitleaks.hardcoded_secrets.jwt
+title: Uncovered a JSON Web Token, which may lead to unauthorized access to web applications and sensitive user data
+description: Uncovered a JSON Web Token, which may lead to unauthorized access to web applications and sensitive user data.
+severity_default: high
+category: hardcoded_secrets
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- tool_description
+- agent_task_config
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: All Gitleaks rules map to AG-03 secret exposure.
+targets:
+- '*.md'
+- '*.txt'
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.toml'
+- '*.env'
+- '*.env.*'
+- '*.cfg'
+- '*.ini'
+match_mode: any
+patterns:
+- type: regex
+  value: \b(ey[a-zA-Z0-9]{17,}\.ey[a-zA-Z0-9\/\\_-]{17,}\.(?:[a-zA-Z0-9\/\\_-]{10,}={0,2})?)(?:[\x60'"\s;]|\\[nr]|$)
+exclude_patterns:
+- type: contains
+  value: AKIAIOSFODNN7EXAMPLE
+- type: contains
+  value: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+- type: regex
+  value: (?:ghp|gho|ghu|ghs|ghr|github_pat)_[xX]{20,}
+- type: regex
+  value: (?i)<\s*your[\s_-]*(?:api[\s_-]*)?key[\s_-]*here\s*>
+- type: regex
+  value: (?i)\bYOUR_[A-Z_]{2,30}_(?:KEY|TOKEN|SECRET)\b
+- type: regex
+  value: (?i)\bxxx+-xxx+-xxx+\b
+- type: contains
+  value: 'BEGIN OPENSSH PRIVATE KEY-----
+
+    b3BlbnNza'
+- type: contains
+  value: sk-proj-EXAMPLE
+upstream_entropy_threshold: 3.0

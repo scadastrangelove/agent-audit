@@ -1,0 +1,68 @@
+# =============================================================
+# gitleaks.hardcoded_secrets.pypi-upload-token
+# =============================================================
+# Adapted from pypi-upload-token (https://github.com/gitleaks/gitleaks)
+# MIT (c) 2019 Zachary Rice
+# Source: Gitleaks
+# Severity: high  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: gitleaks
+  original_id: pypi-upload-token
+  original_title: Discovered a PyPI upload token, potentially compromising Python package distribution and repository integrity
+  source_version: git-8863af47d64c
+  import_date: '2026-05-03'
+  upstream: https://github.com/gitleaks/gitleaks
+  license: MIT (c) 2019 Zachary Rice
+agent_audit_id: gitleaks.hardcoded_secrets.pypi-upload-token
+title: Discovered a PyPI upload token, potentially compromising Python package distribution and repository integrity
+description: Discovered a PyPI upload token, potentially compromising Python package distribution and repository integrity.
+severity_default: high
+category: hardcoded_secrets
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- tool_description
+- agent_task_config
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: All Gitleaks rules map to AG-03 secret exposure.
+targets:
+- '*.md'
+- '*.txt'
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.toml'
+- '*.env'
+- '*.env.*'
+- '*.cfg'
+- '*.ini'
+match_mode: any
+patterns:
+- type: regex
+  value: pypi-AgEIcHlwaS5vcmc[\w-]{50,1000}
+exclude_patterns:
+- type: contains
+  value: AKIAIOSFODNN7EXAMPLE
+- type: contains
+  value: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+- type: regex
+  value: (?:ghp|gho|ghu|ghs|ghr|github_pat)_[xX]{20,}
+- type: regex
+  value: (?i)<\s*your[\s_-]*(?:api[\s_-]*)?key[\s_-]*here\s*>
+- type: regex
+  value: (?i)\bYOUR_[A-Z_]{2,30}_(?:KEY|TOKEN|SECRET)\b
+- type: regex
+  value: (?i)\bxxx+-xxx+-xxx+\b
+- type: contains
+  value: 'BEGIN OPENSSH PRIVATE KEY-----
+
+    b3BlbnNza'
+- type: contains
+  value: sk-proj-EXAMPLE
+upstream_entropy_threshold: 3.0

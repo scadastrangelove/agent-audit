@@ -1,0 +1,88 @@
+# =============================================================
+# nova.prompt-injection.messaging-scripting-rule
+# =============================================================
+# Adapted from MessagingScriptingRule (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: MessagingScriptingRule
+  original_title: MessagingScriptingRule
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 86ee3098-c61b-4250-9720-00a8dedfccad
+  upstream_author: Thomas Roccia
+agent_audit_id: nova.prompt-injection.messaging-scripting-rule
+title: Detects requests for help with scripts that send programmatic messages
+description: Detects requests for help with scripts that send programmatic messages
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)code
+- type: regex
+  value: (?i)script
+- type: regex
+  value: (?i)program
+- type: regex
+  value: (?i)API
+- type: regex
+  value: (?i)SMS
+- type: regex
+  value: (?i)text\ message
+- type: regex
+  value: (?i)message
+- type: regex
+  value: (?i)send
+- type: regex
+  value: (?i)sending
+- type: regex
+  value: (?i)programmatically
+- type: regex
+  value: (?i)bulk
+- type: regex
+  value: (?i)mass
+- type: regex
+  value: (?i)Twilio
+- type: regex
+  value: (?i)numbers
+- type: regex
+  value: (?i)recipients
+exclude_patterns: []
+upstream_severity: medium
+upstream_semantics_patterns:
+- name: messaging_script
+  prose: seeking help with scripts for programmatic message sending
+  threshold: 0.4
+- name: automation_request
+  prose: requesting assistance with automation of messaging services
+  threshold: 0.4
+upstream_llm_checks:
+- name: script_check
+  prompt: Determine if this query is requesting help with developing or debugging code that programmatically sends text messages
+  threshold: 0.7
+upstream_condition_raw: ($code or $script or $program) and ($sms or $text or $message) and ($send or $sending or $programmatically
+  or $bulk or $mass) and ($api or $twilio) and ($numbers or $recipients) and (any of semantics.*) and llm.$script_check
+upstream_condition_mapping_note: 'unrecognized condition shape: ''($code or $script or $program) and ($sms or $text or $message)
+  and ($send or $sending or $programmatically or $bulk or $mass) and ($api or $twilio) and ($numbers or $recipients) and (any
+  of semantics.*) and llm.$script_check''; defaulted to any-of'
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

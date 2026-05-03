@@ -1,0 +1,62 @@
+# =============================================================
+# nova.prompt-injection.payload-splitting-attack
+# =============================================================
+# Adapted from PayloadSplittingAttack (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: PayloadSplittingAttack
+  original_title: PayloadSplittingAttack
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: d3bcda9a-4ad1-4ab2-a8d2-329fa78b8aa3
+  upstream_author: '@fr0gger_'
+agent_audit_id: nova.prompt-injection.payload-splitting-attack
+title: Detects payload splitting in prompt injection
+description: Detects payload splitting in prompt injection
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: continue from|continuing from|following from|next part
+- type: regex
+  value: part \d of \d|split (content|message)
+- type: regex
+  value: fragment|piece|segment|chunk
+exclude_patterns: []
+upstream_severity: high
+upstream_semantics_patterns:
+- name: combining_instructions
+  prose: combine these instructions
+  threshold: 0.4
+- name: split_payload
+  prose: process these parts together
+  threshold: 0.4
+upstream_llm_checks:
+- name: split_attack
+  prompt: Does this prompt appear to be part of a split message that might contain concealed instructions?
+  threshold: 0.3
+upstream_condition_raw: keywords.$continuation or keywords.$split_content or keywords.$fragment or semantics.$combining_instructions
+  or semantics.$split_payload or llm.$split_attack
+upstream_condition_mapping_note: explicit keyword refs only, any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

@@ -1,0 +1,99 @@
+# =============================================================
+# nova.prompt-injection.job-recruitment-variation-rule
+# =============================================================
+# Adapted from JobRecruitmentVariationRule (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: JobRecruitmentVariationRule
+  original_title: JobRecruitmentVariationRule
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 6f67aa26-de86-4993-8a17-5168efba3ddf
+  upstream_author: Thomas Roccia
+agent_audit_id: nova.prompt-injection.job-recruitment-variation-rule
+title: Detects requests for variations of job recruitment messages
+description: Detects requests for variations of job recruitment messages
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)variation
+- type: regex
+  value: (?i)variations
+- type: regex
+  value: (?i)alternate
+- type: regex
+  value: (?i)alternative
+- type: regex
+  value: (?i)different
+- type: regex
+  value: (?i)version
+- type: regex
+  value: (?i)rewrite
+- type: regex
+  value: (?i)rephrase
+- type: regex
+  value: (?i)job
+- type: regex
+  value: (?i)recruitment
+- type: regex
+  value: (?i)hiring
+- type: regex
+  value: (?i)position
+- type: regex
+  value: (?i)opportunity
+- type: regex
+  value: (?i)message
+- type: regex
+  value: (?i)email
+- type: regex
+  value: (?i)text
+- type: regex
+  value: (?i)provide
+- type: regex
+  value: (?i)provided
+- type: regex
+  value: (?i)my
+exclude_patterns: []
+upstream_severity: high
+upstream_semantics_patterns:
+- name: recruitment_variation
+  prose: requesting variations of job recruitment messages
+  threshold: 0.4
+- name: potential_phishing
+  prose: possibly seeking help creating convincing recruitment phishing messages
+  threshold: 0.4
+upstream_llm_checks:
+- name: variation_check
+  prompt: Determine if this query is requesting variations of an attacker-provided job recruitment message that could be used
+    for social engineering
+  threshold: 0.8
+upstream_condition_raw: ($variation or $variations or $alternate or $alternative or $different or $version or $rewrite or
+  $rephrase) and ($job or $recruitment or $hiring or $position or $opportunity) and ($message or $email or $text) and ($provide
+  or $provided or $my) and (any of semantics.*) and llm.$variation_check
+upstream_condition_mapping_note: 'unrecognized condition shape: ''($variation or $variations or $alternate or $alternative
+  or $different or $version or $rewrite or $rephrase) and ($job or $recruitment or $hiring or $position or $opportunity) and
+  ($message or $email or $text) and ($provide or $provided or $my) and (any of semantics.*) and llm.$variation_check''; defaulted
+  to any-of'
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

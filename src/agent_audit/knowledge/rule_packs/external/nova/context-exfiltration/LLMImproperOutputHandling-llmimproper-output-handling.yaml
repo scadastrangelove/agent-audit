@@ -1,0 +1,76 @@
+# =============================================================
+# nova.context-exfiltration.llmimproper-output-handling
+# =============================================================
+# Adapted from LLMImproperOutputHandling (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-03 (+AG-03)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: LLMImproperOutputHandling
+  original_title: LLMImproperOutputHandling
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 2d5d267e-a991-4400-92fb-e40b02395339
+  upstream_author: '@fr0gger_'
+agent_audit_id: nova.context-exfiltration.llmimproper-output-handling
+title: Detects potential exploitation of unsafe LLM output handling such as code execution, XSS, SQLi, or injection into downstream
+  systems without validation.
+description: Detects potential exploitation of unsafe LLM output handling such as code execution, XSS, SQLi, or injection
+  into downstream systems without validation.
+severity_default: low
+category: context-exfiltration
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (exec|eval|os\.system|subprocess\.run)
+- type: regex
+  value: <script>|onerror=|javascript:|<iframe
+- type: regex
+  value: \b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION)\b
+- type: regex
+  value: '```(js|javascript|bash|sh|sql)'
+- type: regex
+  value: email template|HTML email|marketing (content|campaign)
+- type: regex
+  value: \.\.\/|\/etc\/passwd
+- type: regex
+  value: (unsanitized|raw|unescaped) output
+- type: regex
+  value: inject.*(into|via).*LLM output
+exclude_patterns: []
+upstream_severity: high
+upstream_semantics_patterns:
+- name: unsafe_output
+  prose: LLM output may be used without validation or sanitization
+  threshold: 0.2
+- name: exec_or_inject
+  prose: output content may result in code execution or injection
+  threshold: 0.2
+upstream_llm_checks:
+- name: direct_passthrough
+  prompt: LLM output sent directly to backend or UI without filtering
+  threshold: 0.0
+- name: disable_safety
+  prompt: prompt suggests skipping validation or escaping of model output
+  threshold: 0.0
+upstream_condition_raw: any of keywords.* or any of semantics.* or any of llm.*
+upstream_condition_mapping_note: mixed condition; keyword side approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

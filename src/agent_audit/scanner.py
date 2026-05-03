@@ -21,6 +21,7 @@ from .discovery import AgentInstallation, discover
 from .events import AgentKind, Session
 from .parsers import parse_claude_code_file, parse_codex_file
 from .rules import Finding, run_config_rules, run_session_rules
+from .session_rule_executor import run_session_rule_packs
 
 
 @dataclass
@@ -29,6 +30,19 @@ class ScanResult:
     sessions: List[Session] = field(default_factory=list)
     findings: List[Finding] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
+
+    # M2 Phase 1 — internal-only: per-session repo signal inventory.
+    # Keys are session_id; values are RepoSignalInventory (or absent
+    # when the session's cwd didn't resolve to a known repo).
+    #
+    # This field is populated during scan() but not yet rendered
+    # anywhere — it ships invisibly per the Phase 1 risk gate. Phase 2
+    # correlators will consume these inventories. Kept off-bundle for
+    # now so that backwards-compatible JSON output is unchanged.
+    #
+    # Type-erased to dict to avoid an import cycle with cross_mode.
+    # Concrete type: Dict[str, RepoSignalInventory].
+    repo_inventories: Dict[str, object] = field(default_factory=dict)
 
     @property
     def findings_by_severity(self) -> Dict[str, List[Finding]]:
@@ -72,6 +86,23 @@ def scan(
     result.installations = installations or discover()
     log.record("discover", "filesystem", found=len(result.installations))
 
+    # M1 — load rule-pack rules once and adapt for forensic-mode execution.
+    # Pre-loading avoids re-walking the rule-pack directory for every
+    # session. Failure here is non-fatal — forensic falls back to native
+    # detectors only, which is the pre-M1 behavior.
+    rule_pack_rules = None  # None signals "load lazily"
+    try:
+        from .knowledge.rule_pack_loader import load_all_rules as _load
+        rule_pack_rules = _load()
+        log.record(
+            "load_rule_packs",
+            "knowledge/rule_packs",
+            count=len(rule_pack_rules),
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.record("load_rule_packs", "knowledge/rule_packs", error=str(exc))
+        rule_pack_rules = []
+
     for agent in result.installations:
         progress(f"scanning {agent.name}...")
 
@@ -114,7 +145,43 @@ def scan(
             _normalize_tool_names(session)
             result.sessions.append(session)
 
+            # M2 Phase 1 — silently build/cache the repo signal inventory
+            # for this session if its cwd resolves to a known repo. This
+            # data is not rendered anywhere yet; Phase 2 correlators will
+            # consume it. Failures are swallowed — this is purely
+            # additive and must not break the forensic scan.
+            try:
+                from .cross_mode import (
+                    build_repo_signal_inventory, resolve_session_repo,
+                )
+                repo_root = resolve_session_repo(session.cwd)
+                if repo_root is not None:
+                    inv = build_repo_signal_inventory(repo_root)
+                    if inv is not None:
+                        result.repo_inventories[session.session_id] = inv
+            except Exception:  # noqa: BLE001 — never let this break scan
+                pass
+
             session_findings = run_session_rules(session)
+
+            # M1 — additionally run any rule-pack rules whose audit_surface
+            # includes a session_* value. These were previously only used
+            # by the project scanner; M1 closes the diagonal so 78+ rules
+            # now actually run in forensic mode. Errors are caught
+            # internally — buggy rule-pack rules cannot abort the scan.
+            if rule_pack_rules:
+                pack_findings = run_session_rule_packs(
+                    session, rules=rule_pack_rules
+                )
+                if pack_findings:
+                    log.record(
+                        "session_rule_pack_findings",
+                        session.session_id,
+                        outcome="warn",
+                        count=len(pack_findings),
+                    )
+                session_findings = list(session_findings) + list(pack_findings)
+
             if session_findings:
                 log.record(
                     "session_findings",

@@ -171,8 +171,8 @@ def convert_to_finding(f: ApprovalFinding) -> Finding:
         "source:agent-audit-native",
         "derived-from:v3-retained-COM-V3-P1-01",
         "derived-from:v5-lexicon-v2",
+        "owasp_agentic:ASI10 - Rogue Agents",
         "owasp_agentic:ASI03 - Identity and Privilege Abuse",
-        "owasp_agentic:ASI06 - Excessive Agency",
     ]
     return Finding(
         rule_id=f.rule_id,

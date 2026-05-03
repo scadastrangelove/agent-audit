@@ -1,0 +1,107 @@
+# =============================================================
+# nova.prompt-injection.government-phishing-theme-rule
+# =============================================================
+# Adapted from GovernmentPhishingThemeRule (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: GovernmentPhishingThemeRule
+  original_title: GovernmentPhishingThemeRule
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 85c2dddb-d534-4950-a2f7-8f9613eeb35f
+  upstream_author: Thomas Roccia
+agent_audit_id: nova.prompt-injection.government-phishing-theme-rule
+title: Detects requests for effective government-themed phishing content
+description: Detects requests for effective government-themed phishing content
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)theme
+- type: regex
+  value: (?i)themes
+- type: regex
+  value: (?i)topic
+- type: regex
+  value: (?i)subject
+- type: regex
+  value: (?i)interesting
+- type: regex
+  value: (?i)engaging
+- type: regex
+  value: (?i)attention
+- type: regex
+  value: (?i)employee
+- type: regex
+  value: (?i)employees
+- type: regex
+  value: (?i)staff
+- type: regex
+  value: (?i)government
+- type: regex
+  value: (?i)department
+- type: regex
+  value: (?i)agency
+- type: regex
+  value: (?i)federal
+- type: regex
+  value: (?i)attachment
+- type: regex
+  value: (?i)attachments
+- type: regex
+  value: (?i)name
+- type: regex
+  value: (?i)file
+- type: regex
+  value: (?i)files
+- type: regex
+  value: (?i)avoid
+- type: regex
+  value: (?i)bypass
+- type: regex
+  value: (?i)blocked
+- type: regex
+  value: (?i)filter
+exclude_patterns: []
+upstream_severity: high
+upstream_semantics_patterns:
+- name: phishing_inquiry
+  prose: requesting help crafting government-targeted phishing themes
+  threshold: 0.4
+- name: evasion_tactics
+  prose: seeking advice on evading security filters with attachment names
+  threshold: 0.4
+upstream_llm_checks:
+- name: phishing_check
+  prompt: Analyze if this query is requesting themes that government employees would find interesting and names for attachments
+    to avoid being blocked, potentially for phishing purposes
+  threshold: 0.8
+upstream_condition_raw: ($theme or $themes or $topic or $subject) and ($interesting or $engaging or $attention) and ($employee
+  or $employees or $staff) and ($government or $department or $agency or $federal) and ($attachment or $attachments or $name
+  or $file or $files) and ($avoid or $bypass or $blocked or $filter) and (any of semantics.*) and llm.$phishing_check
+upstream_condition_mapping_note: 'unrecognized condition shape: ''($theme or $themes or $topic or $subject) and ($interesting
+  or $engaging or $attention) and ($employee or $employees or $staff) and ($government or $department or $agency or $federal)
+  and ($attachment or $attachments or $name or $file or $files) and ($avoid or $bypass or $blocked or $filter) and (any of
+  semantics.*) and llm.$phishing_check''; defaulted to any-of'
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

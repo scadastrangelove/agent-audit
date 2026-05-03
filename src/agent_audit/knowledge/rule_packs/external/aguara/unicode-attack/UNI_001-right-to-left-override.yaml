@@ -1,0 +1,47 @@
+# =============================================================
+# aguara.unicode-attack.right-to-left-override
+# =============================================================
+# Adapted from UNI_001 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-04 (+AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: UNI_001
+  original_title: Right-to-left override
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.unicode-attack.right-to-left-override
+title: Right-to-left override
+description: Detects U+202E right-to-left override characters used to disguise text (Trojan Source, CVE-2021-42574)
+severity_default: high
+category: unicode-attack
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AI-04
+  secondary:
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: \x{202E}
+exclude_patterns: []
+remediation: Strip U+202E right-to-left override characters from all input before processing. See Trojan Source (CVE-2021-42574)
+  for attack details. LRO (U+202D) coverage moved to a separate rule with context requirement.
+examples:
+  true_positive:
+  - normal text‮txt.exe
+  - malicious‮filename.pdf
+  false_positive:
+  - RTL override is used in Arabic and Hebrew text rendering
+  - ‭some LRO direction for legitimate bidi layout
+  - CVE-2021-42574 is the Trojan Source identifier for U+202E

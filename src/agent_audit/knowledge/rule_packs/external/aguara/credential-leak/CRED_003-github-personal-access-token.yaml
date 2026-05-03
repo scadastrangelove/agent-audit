@@ -1,0 +1,53 @@
+# =============================================================
+# aguara.credential-leak.github-personal-access-token
+# =============================================================
+# Adapted from CRED_003 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CRED_003
+  original_title: GitHub personal access token
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.credential-leak.github-personal-access-token
+title: GitHub personal access token
+description: Detects GitHub personal access tokens
+severity_default: critical
+category: credential-leak
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: ghp_[a-zA-Z0-9]{36}
+- type: regex
+  value: gho_[a-zA-Z0-9]{36}
+- type: regex
+  value: ghu_[a-zA-Z0-9]{36}
+- type: regex
+  value: ghs_[a-zA-Z0-9]{36}
+- type: regex
+  value: ghr_[a-zA-Z0-9]{36}
+- type: regex
+  value: github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}
+exclude_patterns: []
+remediation: Use environment variables or a secrets manager for GitHub tokens. Revoke compromised tokens at github.com/settings/tokens.
+examples:
+  true_positive:
+  - GITHUB_TOKEN=ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl
+  false_positive:
+  - Tokens start with ghp_ prefix

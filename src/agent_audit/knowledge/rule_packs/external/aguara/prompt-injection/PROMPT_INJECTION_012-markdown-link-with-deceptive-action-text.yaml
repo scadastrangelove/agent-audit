@@ -1,0 +1,45 @@
+# =============================================================
+# aguara.prompt-injection.markdown-link-with-deceptive-action-text
+# =============================================================
+# Adapted from PROMPT_INJECTION_012 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AI-04 (+AI-05)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: PROMPT_INJECTION_012
+  original_title: Markdown link with deceptive action text
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.prompt-injection.markdown-link-with-deceptive-action-text
+title: Markdown link with deceptive action text
+description: Detects markdown links that use urgent action phrases to lure clicks
+severity_default: medium
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)\[([^\]]*(?:click here to (?:verify|confirm|update|download|login)|log\s*in\s+now|urgent|action required)[^\]]*)\]\(https?://[^)]+\)
+exclude_patterns: []
+remediation: Replace deceptive link text with a clear description of the destination. Avoid urgency phrases in markdown link
+  labels.
+examples:
+  true_positive:
+  - '[Click here to verify your account](https://evil.com/phish)'
+  false_positive:
+  - '[Click here](https://docs.example.com/guide)'

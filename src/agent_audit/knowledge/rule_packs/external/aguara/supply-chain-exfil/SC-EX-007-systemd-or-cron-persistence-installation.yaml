@@ -1,0 +1,59 @@
+# =============================================================
+# aguara.supply-chain-exfil.systemd-or-cron-persistence-installation
+# =============================================================
+# Adapted from SC-EX-007 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AI-03 (+AG-04,AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SC-EX-007
+  original_title: Systemd or cron persistence installation
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain-exfil.systemd-or-cron-persistence-installation
+title: Systemd or cron persistence installation
+description: Detects code creating systemd service files, crontab entries, or shell profile modifications for persistence
+  after compromise
+severity_default: critical
+category: supply-chain-exfil
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-04
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.py'
+- '*.sh'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)\.config/systemd/user/.*\.service
+- type: regex
+  value: (?i)systemctl\s+(--user\s+)?enable
+- type: regex
+  value: (?i)(crontab|/etc/cron\.d/).*(@reboot|\*/)
+- type: regex
+  value: (?i)(bashrc|zshrc|profile|bash_profile).*(python|curl|wget|bash\s+-c)
+exclude_patterns:
+- type: regex
+  value: (?i)^\s*#
+remediation: Do not install persistence mechanisms from package code. Legitimate services should be installed via documented,
+  opt-in procedures.
+examples:
+  true_positive:
+  - open(os.path.expanduser("~/.config/systemd/user/sysmon.service"), "w").write(unit)
+  - os.system("systemctl --user enable sysmon.service")
+  - 'with open(os.path.expanduser("~/.bashrc"), "a") as f: f.write("python3 ~/.backdoor.py &")'
+  false_positive:
+  - '# systemctl --user enable myservice.service'
+  - systemctl status nginx

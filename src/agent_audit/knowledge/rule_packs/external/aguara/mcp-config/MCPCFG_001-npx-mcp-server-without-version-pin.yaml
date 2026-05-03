@@ -1,0 +1,48 @@
+# =============================================================
+# aguara.mcp-config.npx-mcp-server-without-version-pin
+# =============================================================
+# Adapted from MCPCFG_001 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: low  |  ASAMM: AG-04 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCPCFG_001
+  original_title: npx MCP server without version pin
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-config.npx-mcp-server-without-version-pin
+title: npx MCP server without version pin
+description: Detects MCP server configs using npx to run packages without version pinning
+severity_default: low
+category: mcp-config
+audit_surface:
+- mcp_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)["']command["']\s*:\s*["']npx["']
+- type: regex
+  value: (?i)claude\s+mcp\s+add\s+\S+\s+--\s+npx\s+
+exclude_patterns: []
+remediation: Pin npx packages to exact versions (e.g., @modelcontextprotocol/server-github@1.2.3).
+examples:
+  true_positive:
+  - '"command": "npx", "args": ["@some-org/mcp-server"]'
+  - claude mcp add myserver -- npx @some-org/mcp-server
+  false_positive:
+  - '"command": "node", "args": ["./local-server.js"]'
+  - npx is a package runner for Node.js

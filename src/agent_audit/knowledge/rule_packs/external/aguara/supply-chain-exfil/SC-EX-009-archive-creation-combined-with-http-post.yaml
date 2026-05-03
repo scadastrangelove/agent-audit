@@ -1,0 +1,51 @@
+# =============================================================
+# aguara.supply-chain-exfil.archive-creation-combined-with-http-post
+# =============================================================
+# Adapted from SC-EX-009 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AI-03 (+AG-04,AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SC-EX-009
+  original_title: Archive creation combined with HTTP POST
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain-exfil.archive-creation-combined-with-http-post
+title: Archive creation combined with HTTP POST
+description: Detects code creating tar or zip archives and sending them via HTTP in the same file, a pattern used to bundle
+  and exfiltrate stolen credentials
+severity_default: critical
+category: supply-chain-exfil
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-04
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.py'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)(tarfile\.open|zipfile\.ZipFile|shutil\.make_archive|gzip\.open)
+- type: regex
+  value: (?i)(requests\.(post|put)|urllib\.request\.urlopen|httpx\.(post|put))
+exclude_patterns: []
+remediation: Do not create archives of collected data for HTTP transmission. If archiving is needed, log what is being archived
+  and where it is sent.
+examples:
+  true_positive:
+  - 'tar = tarfile.open("data.tar.gz", "w:gz"); tar.add("/tmp/stolen"); requests.post(url, files={"f": open("data.tar.gz",
+    "rb")})'
+  false_positive:
+  - shutil.make_archive("backup", "zip", "/app/data")
+  - requests.post(url, json=result)

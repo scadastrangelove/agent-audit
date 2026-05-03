@@ -1,0 +1,61 @@
+# =============================================================
+# aguara.mcp-config.writable-workspace-mount
+# =============================================================
+# Adapted from MCPCFG_009 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-04 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCPCFG_009
+  original_title: Writable workspace mount
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-config.writable-workspace-mount
+title: Writable workspace mount
+description: Detects bind mounts configured as read-write in MCP server configurations, allowing the server to modify the
+  host workspace
+severity_default: medium
+category: mcp-config
+audit_surface:
+- mcp_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.toml'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)["']?[/~.][^"'\s]*:[^"'\s]*:rw["']?
+- type: regex
+  value: (?i)["']?readOnly["']?\s*[:=]\s*["']?false["']?
+- type: regex
+  value: (?i)(workspace|project|host|source)\s+(directory|folder|path|mount).{0,40}(writable|read[- ]?write|rw\b|mutable)
+- type: regex
+  value: (?i)(mount|bind|volume).{0,40}(workspace|project|source).{0,40}(writable|read[- ]?write|rw\b)
+exclude_patterns:
+- type: regex
+  value: (?i)["']?[/~.][^"'\s]*:[^"'\s]*:ro["']?
+- type: regex
+  value: (?i)["']?readOnly["']?\s*[:=]\s*["']?true["']?
+remediation: Mount workspace volumes as read-only (:ro) and use a separate writable volume for output only.
+examples:
+  true_positive:
+  - '"args": ["-v", "/home/user/project:/workspace:rw"]'
+  - '"readOnly": false'
+  - The workspace directory is mounted as read-write into the container
+  - Bind mount the source folder as writable for the MCP server
+  false_positive:
+  - '"args": ["-v", "/home/user/project:/workspace:ro"]'
+  - '"readOnly": true'
+  - Mount the workspace as read-only for security

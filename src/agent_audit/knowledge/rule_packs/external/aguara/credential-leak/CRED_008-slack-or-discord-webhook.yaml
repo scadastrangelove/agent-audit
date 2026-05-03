@@ -1,0 +1,46 @@
+# =============================================================
+# aguara.credential-leak.slack-or-discord-webhook
+# =============================================================
+# Adapted from CRED_008 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CRED_008
+  original_title: Slack or Discord webhook
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.credential-leak.slack-or-discord-webhook
+title: Slack or Discord webhook
+description: Detects Slack and Discord webhook URLs
+severity_default: high
+category: credential-leak
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[a-zA-Z0-9]+
+- type: regex
+  value: https://(discord|discordapp)\.com/api/webhooks/[0-9]+/[a-zA-Z0-9_-]+
+exclude_patterns: []
+remediation: Store webhook URLs in environment variables. Regenerate the webhook if it has been committed to version control.
+examples:
+  true_positive:
+  - SLACK_WEBHOOK=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+  - https://discord.com/api/webhooks/123456789/abcdef
+  false_positive:
+  - Set up Slack webhooks at hooks.slack.com

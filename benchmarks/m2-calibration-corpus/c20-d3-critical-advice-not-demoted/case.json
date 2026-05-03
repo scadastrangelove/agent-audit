@@ -1,0 +1,17 @@
+{
+  "id": "c20-d3-critical-advice-not-demoted",
+  "title": "CRITICAL dangerous-recommendation in red-team repo → §5.4 must NOT demote (severity gate ≤ medium)",
+  "agent": "claude_code",
+  "description": "D3 upper boundary case (complement to c19). The §5.4 correlator's severity gate is ≤ medium — CRITICAL advice should never be demoted regardless of context. Verifies the gate holds at the upper end of the severity ladder, not just the high boundary tested by c19.",
+  "source_type": "synthetic_calibration",
+  "tags": ["red-team", "d3-boundary", "critical", "negative", "true-negative", "severity-propagation"],
+  "m2_expected": {
+    "expected_correlator": null,
+    "expected_link": false,
+    "expected_repo_tags": ["red_team_heavy", "has_skills", "has_instruction_files"],
+    "expected_dynamic_finding_kind": "dangerous_recommendation",
+    "expected_dynamic_findings": [["advice.dangerous-recommendation", "critical"]],
+    "expected_proximity_minimum": null,
+    "rationale": "Per §5.4 + D3: severity gate is `sev in ('info', 'low', 'medium')`. Critical advice — like advising a destructive irreversible action — stays alarming regardless of educational frame. The gate is intentionally tight: if the rule itself decided this was critical-severity advice, the linker should not second-guess that based on context alone."
+  }
+}

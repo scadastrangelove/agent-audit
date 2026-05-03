@@ -1,0 +1,53 @@
+# =============================================================
+# aguara.supply-chain.git-clone-and-execute-chain
+# =============================================================
+# Adapted from SUPPLY_012 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-04 (+AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SUPPLY_012
+  original_title: Git clone and execute chain
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain.git-clone-and-execute-chain
+title: Git clone and execute chain
+description: Detects git clone of repositories followed by execution of cloned content
+severity_default: medium
+category: supply-chain
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- plugin_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)git\s+clone\s+(--depth\s+\d+\s+)?https?://[^\s]+
+- type: regex
+  value: (?i)(cd\s+\S+\s*(&&|;|\n)\s*(pip\s+install|python\s+setup\.py|make\s+\S+|npm\s+run|\./\S+)|pip\s+install\s+\.|python\s+setup\.py\s+install|chmod\s+\+x\s+\S+\s*(&&|;|\n)\s*\./|&&\s*make\s+\w+|make\s+install)
+exclude_patterns: []
+remediation: Pin the clone to a specific commit SHA or tag. Audit cloned code before executing it.
+examples:
+  true_positive:
+  - git clone https://github.com/org/repo && cd repo && pip install .
+  - git clone https://github.com/org/repo && chmod +x install.sh && ./install.sh
+  - git clone https://github.com/org/repo && cd repo && make install
+  - git clone https://github.com/org/repo && cd /tmp/tool && python setup.py install
+  false_positive:
+  - git clone https://github.com/org/repo for more info
+  - git clone --branch v1.2.3 https://github.com/org/repo
+  - git clone https://github.com/org/repo to review the code. Then run npm install.

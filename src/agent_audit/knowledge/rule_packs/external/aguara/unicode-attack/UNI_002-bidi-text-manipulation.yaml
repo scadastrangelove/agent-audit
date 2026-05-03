@@ -1,0 +1,46 @@
+# =============================================================
+# aguara.unicode-attack.bidi-text-manipulation
+# =============================================================
+# Adapted from UNI_002 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-04 (+AG-02)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: UNI_002
+  original_title: Bidi text manipulation
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.unicode-attack.bidi-text-manipulation
+title: Bidi text manipulation
+description: Detects Unicode bidirectional control characters that can hide content
+severity_default: high
+category: unicode-attack
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AI-04
+  secondary:
+  - AG-02
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: '[\x{2066}\x{2067}\x{2068}\x{2069}]'
+- type: regex
+  value: '[\x{200F}\x{200E}]{2,}'
+exclude_patterns: []
+remediation: Remove all Unicode bidirectional control characters (U+2066-U+2069, U+200E, U+200F) from untrusted input.
+examples:
+  true_positive:
+  - text⁦hidden content⁩visible
+  - ‏‏manipulated text
+  false_positive:
+  - Bidi isolate characters support mixed LTR and RTL layouts

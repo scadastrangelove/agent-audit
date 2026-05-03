@@ -1009,7 +1009,7 @@ def scan_cmd(
 )
 @click.option(
     "--tool",
-    type=click.Choice(["all", "atr", "aguara", "cisco-promptguard"]),
+    type=click.Choice(["all", "atr", "aguara", "cisco-promptguard", "gitleaks", "nova"]),
     default="all",
     help="Filter rules by source tool. Default: all.",
 )
@@ -1027,7 +1027,30 @@ def scan_cmd(
     "--no-aggregate", is_flag=True,
     help="Disable collection-scale aggregation (show every finding individually).",
 )
-def scan_project_cmd(path: Path, output: Optional[Path], tool: str, min_severity: str, yes: bool, no_aggregate: bool) -> None:
+@click.option(
+    "--curation-profile",
+    type=click.Choice(["none", "curated-v1"]),
+    default="none",
+    help="Apply an adjudication-backed post-processing profile before severity filtering.",
+)
+@click.option(
+    "--track-tool-pinning/--no-track-tool-pinning",
+    default=False,
+    help="Compare MCP tool descriptions against the saved baseline and emit "
+         "rug-pull findings on changes. First scan records the baseline silently.",
+)
+@click.option(
+    "--update-pinning-baseline",
+    is_flag=True,
+    help="Together with --track-tool-pinning, update the baseline after "
+         "comparison. Without this flag, the baseline stays unchanged so "
+         "the same drift fires on every subsequent scan (CI-friendly).",
+)
+def scan_project_cmd(path: Path, output: Optional[Path], tool: str,
+                     min_severity: str, yes: bool, no_aggregate: bool,
+                     curation_profile: str,
+                     track_tool_pinning: bool,
+                     update_pinning_baseline: bool) -> None:
     """Scan a repo or directory of repos with rule packs.
 
     PATH may be a single repository (contains .git), a directory of repositories,
@@ -1047,6 +1070,7 @@ def scan_project_cmd(path: Path, output: Optional[Path], tool: str, min_severity
         render_project_markdown,
     )
     from .rules import Severity
+    from .signature_curation import apply_curation_profile
 
     abs_path = path.resolve()
 
@@ -1075,6 +1099,37 @@ def scan_project_cmd(path: Path, output: Optional[Path], tool: str, min_severity
         aggregate_collections=not no_aggregate,
     )
 
+    # N1 — tool-pinning state-tracking detector. Opt-in because mutating
+    # state on every scan would surprise users running ad-hoc scans.
+    # When enabled, runs after scan_project and merges its findings into
+    # the result so they flow through the same reporting pipeline.
+    if track_tool_pinning:
+        from .tool_pinning import check_project as check_tool_pinning
+        try:
+            pinning_findings = check_tool_pinning(
+                abs_path, update_baseline=update_pinning_baseline,
+            )
+        except Exception as e:  # noqa: BLE001
+            console.print(
+                f"[yellow]  tool-pinning detector failed: {e}[/yellow]"
+            )
+            pinning_findings = []
+        if pinning_findings:
+            result.findings.extend(pinning_findings)
+            console.print(
+                f"[dim]  tool-pinning: {len(pinning_findings)} finding(s)[/dim]"
+            )
+        elif update_pinning_baseline:
+            console.print("[dim]  tool-pinning: baseline updated, no drift[/dim]")
+        else:
+            console.print("[dim]  tool-pinning: no drift detected[/dim]")
+
+    curation_summary = None
+    if curation_profile != "none":
+        curated_findings, curated_summary_obj = apply_curation_profile(result.findings, curation_profile)
+        result.findings = curated_findings
+        curation_summary = curated_summary_obj.to_dict()
+
     # Severity filter
     min_sev = Severity(min_severity)
     kept = [f for f in result.findings if f.severity.order >= min_sev.order]
@@ -1091,6 +1146,10 @@ def scan_project_cmd(path: Path, output: Optional[Path], tool: str, min_severity
     table.add_row("Files scanned", str(result.files_scanned))
     table.add_row("Files with findings", str(result.files_with_findings))
     table.add_row("Findings (total)", str(len(result.findings)))
+    if curation_summary is not None:
+        table.add_row("Curation profile", curation_summary["profile"])
+        table.add_row("Curation suppressed", str(curation_summary["suppressed_findings"]))
+        table.add_row("Curation downgraded", str(curation_summary["severity_downgrades"]))
     if dropped:
         table.add_row(f"Suppressed (< {min_severity})", str(dropped))
     table.add_row("Findings (shown)", str(len(kept)))
@@ -1151,14 +1210,14 @@ def scan_project_cmd(path: Path, output: Optional[Path], tool: str, min_severity
         output.mkdir(parents=True, exist_ok=True)
         # JSON
         json_out = output / "project-findings.json"
-        project_json = build_project_json(abs_path, result, kept, rerank_result)
+        project_json = build_project_json(abs_path, result, kept, rerank_result, curation_summary=curation_summary)
         project_json["native_summary"] = native_summary_dict(rerank_result)
         json_out.write_text(json.dumps(project_json, indent=2, default=str))
 
         # Markdown — native-first rendering with profile summary
         md_out = output / "project-findings.md"
         md_out.write_text(
-            render_project_markdown(abs_path, result, min_severity, kept, rerank_result)
+            render_project_markdown(abs_path, result, min_severity, kept, rerank_result, curation_summary=curation_summary)
         )
         files_of_concern = build_files_of_concern(kept, rerank_result)
         (output / "files-of-concern.json").write_text(
@@ -1373,6 +1432,940 @@ def packs_cmd(show_all: bool) -> None:
     for k, v in s["by_severity"].items():
         style = SEVERITY_STYLES.get(k, "")
         console.print(f"  [{style}]{k}[/]: {v}")
+
+
+@main.command("atlas-validate")
+@click.option(
+    "--strict",
+    is_flag=True,
+    help="Exit 1 on ANY issue (including name drift). Default exits 1 only on unknown/deprecated IDs.",
+)
+@click.option(
+    "--json", "as_json",
+    is_flag=True,
+    help="Emit JSON instead of text report.",
+)
+@click.option(
+    "--quiet",
+    is_flag=True,
+    help="Print nothing; rely on exit code only.",
+)
+def atlas_validate_cmd(strict: bool, as_json: bool, quiet: bool) -> None:
+    """Validate mitre_atlas:* references against the vendored ATLAS snapshot.
+
+    Walks every rule pack YAML plus native detectors, collects mitre_atlas
+    references, and checks each against the bundled MITRE ATLAS data.
+    Catches three drift classes: unknown ID, deprecated/revoked technique,
+    and name-mismatch (e.g. ATLAS renamed 'ML Supply Chain' → 'AI Supply Chain').
+
+    Useful as a CI guardrail. Snapshot lives under
+    src/agent_audit/data/atlas/ATLAS.yaml — refresh procedure documented
+    next to it.
+    """
+    from .tools.atlas_validate import main as atlas_main
+    argv = []
+    if strict:
+        argv.append("--strict")
+    if as_json:
+        argv.append("--json")
+    if quiet:
+        argv.append("--quiet")
+    raise SystemExit(atlas_main(argv))
+
+
+@main.command("owasp-mcp-validate")
+@click.option(
+    "--strict",
+    is_flag=True,
+    help="Exit 1 on ANY issue (including name drift). Default exits 1 only on unknown IDs.",
+)
+@click.option(
+    "--include-missing",
+    is_flag=True,
+    help="Also list rules whose category has a known MCP mapping but no explicit owasp_mcp ref yet (informational, never affects exit code).",
+)
+@click.option(
+    "--json", "as_json",
+    is_flag=True,
+    help="Emit JSON instead of text report.",
+)
+@click.option(
+    "--quiet",
+    is_flag=True,
+    help="Suppress stdout output.",
+)
+def owasp_mcp_validate_cmd(strict: bool, include_missing: bool, as_json: bool, quiet: bool) -> None:
+    """Validate owasp_mcp:* references against the vendored OWASP MCP Top 10 index.
+
+    Same shape as atlas-validate (see Roadmap B3). Catches three drift classes:
+    unknown MCP IDs, name mismatch with upstream titles, and rules whose
+    category has a known MCP mapping but haven't yet exposed it in YAML
+    references.
+
+    The rule-pack loader enriches references with derived owasp_mcp refs
+    automatically at load time — explicit YAML refs are not required.
+    """
+    from .tools.owasp_mcp_validate import main as owasp_mcp_main
+    argv = []
+    if strict:
+        argv.append("--strict")
+    if include_missing:
+        argv.append("--include-missing")
+    if as_json:
+        argv.append("--json")
+    if quiet:
+        argv.append("--quiet")
+    raise SystemExit(owasp_mcp_main(argv))
+
+
+@main.command("owasp-agentic-validate")
+@click.option("--strict", is_flag=True,
+              help="Exit 1 on ANY issue (including name drift). Default exits 1 only on unknown IDs.")
+@click.option("--include-missing", is_flag=True,
+              help="Also list rules with mappable category but no explicit owasp_agentic ref (informational, never affects exit code).")
+@click.option("--json", "as_json", is_flag=True,
+              help="Emit JSON instead of text report.")
+@click.option("--quiet", is_flag=True,
+              help="Suppress stdout output.")
+def owasp_agentic_validate_cmd(strict: bool, include_missing: bool, as_json: bool, quiet: bool) -> None:
+    """Validate owasp_agentic:* references against the vendored ASI Top 10 index.
+
+    Same shape as atlas-validate (B3) and owasp-mcp-validate (B1). Catches
+    unknown ASI IDs, name mismatch with the upstream titles, and rules whose
+    category has a known ASI mapping but haven't yet exposed it in YAML.
+
+    The references_rewrite mechanism in rule_pack_overrides.yaml absorbs
+    upstream draft → release name drift; this validator measures runtime
+    state, not raw YAML text.
+    """
+    from .tools.owasp_agentic_validate import main as agentic_main
+    argv = []
+    if strict:
+        argv.append("--strict")
+    if include_missing:
+        argv.append("--include-missing")
+    if as_json:
+        argv.append("--json")
+    if quiet:
+        argv.append("--quiet")
+    raise SystemExit(agentic_main(argv))
+
+
+@main.command("avid-validate")
+@click.option(
+    "--strict",
+    is_flag=True,
+    help="Exit 1 on ANY issue (including name drift). Default exits 1 only on unknown SEP IDs.",
+)
+@click.option(
+    "--include-missing",
+    is_flag=True,
+    help="Also list rules whose category has a known AVID mapping but no explicit avid: ref yet (informational, never affects exit code).",
+)
+@click.option(
+    "--json", "as_json",
+    is_flag=True,
+    help="Emit JSON instead of text report.",
+)
+@click.option(
+    "--quiet",
+    is_flag=True,
+    help="Suppress stdout output.",
+)
+def avid_validate_cmd(strict: bool, include_missing: bool, as_json: bool, quiet: bool) -> None:
+    """Validate avid:* references against the canonical SEP subcategory list.
+
+    AVID (AI Vulnerability Database) ships ~weekly releases of records
+    plus a slowly-evolving SEP (Security/Ethics/Performance) taxonomy.
+    We cross-link rules to SEP subcategories at the (tool, category)
+    layer rather than per-record because record IDs are less stable
+    across the 2026 GPAI rebuild.
+
+    Catches drift classes mirroring atlas-validate, owasp-mcp-validate,
+    and owasp-agentic-validate: unknown SEP ID, name mismatch with
+    upstream, and rules whose category has a known SEP mapping but
+    haven't yet exposed it in references.
+    """
+    from .tools.avid_validate import main as avid_main
+    argv = []
+    if strict:
+        argv.append("--strict")
+    if include_missing:
+        argv.append("--include-missing")
+    if as_json:
+        argv.append("--json")
+    if quiet:
+        argv.append("--quiet")
+    raise SystemExit(avid_main(argv))
+
+
+@main.command("injection-benchmark")
+@click.option(
+    "--agentdyn",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Path to a clone of github.com/SaFo-Lab/AgentDyn (D2 corpus).",
+)
+@click.option(
+    "--wasp",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Path to a clone of github.com/facebookresearch/wasp (D3 corpus, "
+         "CC-BY-NC).",
+)
+@click.option(
+    "--output", "-o",
+    type=click.Path(file_okay=True, path_type=Path),
+    help="Write JSON report to this file. Default: print summary to stdout.",
+)
+@click.option(
+    "--show-undetected",
+    is_flag=True,
+    help="Print every case where no rule fired. Useful for finding "
+         "uncovered injection styles.",
+)
+def injection_benchmark_cmd(
+    agentdyn: Optional[Path], wasp: Optional[Path],
+    output: Optional[Path], show_undetected: bool,
+) -> None:
+    """Measure rule-pack recall on AgentDyn and WASP injection corpora.
+
+    \b
+    These benchmarks are NOT bundled with agent-audit:
+      - AgentDyn (D2): MIT license; clone github.com/SaFo-Lab/AgentDyn
+      - WASP      (D3): CC-BY-NC; clone github.com/facebookresearch/wasp
+
+    \b
+    For each cloned corpus, the adapter:
+      1. Walks the upstream tree and harvests injection text strings.
+      2. Runs every loaded rule pack pattern against each string.
+      3. Reports recall (cases with ≥1 rule firing / total) and per-rule
+         contribution.
+
+    The benchmark measures recall ONLY. Precision needs a paired benign
+    corpus, which lives separately. High recall on adversarial cases
+    paired with high FP rate on benign docs (which calibration showed
+    for some NOVA rules) is the actionable signal — it tells us which
+    rules need M3 evaluator gating to lift severity safely.
+    """
+    if not agentdyn and not wasp:
+        click.echo(
+            "Pass --agentdyn PATH and/or --wasp PATH. See `injection-benchmark --help`."
+        )
+        raise SystemExit(2)
+
+    from .injection_benchmarks import (
+        load_agentdyn_cases, load_wasp_cases, run_benchmark,
+    )
+    from .knowledge.rule_pack_loader import load_all_rules
+
+    rules = load_all_rules()
+    reports = []
+
+    if agentdyn:
+        click.echo(f"Loading AgentDyn cases from {agentdyn}...")
+        cases = load_agentdyn_cases(agentdyn)
+        click.echo(f"  {len(cases)} cases")
+        report = run_benchmark(cases, rules=rules, suite_label="agentdyn")
+        reports.append(report)
+        _print_report(report, show_undetected)
+
+    if wasp:
+        click.echo(f"\nLoading WASP cases from {wasp}...")
+        cases = load_wasp_cases(wasp)
+        click.echo(f"  {len(cases)} cases")
+        report = run_benchmark(cases, rules=rules, suite_label="wasp")
+        reports.append(report)
+        _print_report(report, show_undetected)
+
+    if output:
+        import json as _json
+        out_data = {"reports": [r.to_dict() for r in reports]}
+        output.write_text(_json.dumps(out_data, indent=2, default=str))
+        click.echo(f"\nWrote {output}")
+
+
+def _print_report(report, show_undetected: bool) -> None:
+    """Pretty-print a single benchmark report."""
+    click.echo(f"\n=== {report.suite.upper()} ===")
+    click.echo(f"  Total cases:    {report.total_cases}")
+    click.echo(f"  Detected:       {report.detected_cases}")
+    click.echo(f"  Recall:         {report.recall:.1%}")
+    if report.per_rule_hits:
+        click.echo(f"\n  Top 10 rules by contribution:")
+        for rid, c in sorted(
+            report.per_rule_hits.items(), key=lambda kv: -kv[1]
+        )[:10]:
+            click.echo(f"    {c:4} {rid}")
+    if show_undetected and report.undetected:
+        click.echo(f"\n  Undetected cases ({len(report.undetected)}):")
+        for r in report.undetected[:20]:
+            click.echo(f"    [{r.case_id}] {r.text_preview}")
+        if len(report.undetected) > 20:
+            click.echo(f"    ... +{len(report.undetected) - 20} more")
+
+
+@main.command("nova-evaluate")
+@click.option(
+    "--report", "report_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=True,
+    help="Path to a project-findings.json produced by scan-project.",
+)
+@click.option(
+    "--verifier",
+    default="claude-cli",
+    type=click.Choice(["claude-cli", "codex-cli", "anthropic-api", "openai-api"]),
+    help="LLM backend for the llm gate. Same choices as `verify`.",
+)
+@click.option(
+    "--no-llm",
+    is_flag=True,
+    help="Skip the llm gate. Run semantics-only (requires sentence-transformers).",
+)
+@click.option(
+    "--no-semantics",
+    is_flag=True,
+    help="Skip the semantics gate. Run llm-only.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Print verdicts but don't update the report file in place.",
+)
+@click.option(
+    "--quiet",
+    is_flag=True,
+    help="Suppress per-finding output. Print summary only.",
+)
+def nova_evaluate_cmd(
+    report_path: Path,
+    verifier: str,
+    no_llm: bool,
+    no_semantics: bool,
+    dry_run: bool,
+    quiet: bool,
+) -> None:
+    """Run NOVA semantics+llm gates on findings to lift severity (M3).
+
+    NOVA rules import at LOW severity because the keyword-only signal is
+    too weak without the upstream semantics + llm gates. This command
+    runs those gates after the fact:
+
+    \b
+      - semantics gate: cosine similarity between matched snippet and
+        upstream prose patterns (requires sentence-transformers).
+      - llm gate:      yes/no question to a configured LLM backend.
+
+    \b
+    Severity policy:
+      both gates available, both pass     → upstream severity
+      one gate available, that passes     → partial lift (one notch up)
+      gate fails                          → demote to INFO
+      no gates available                  → leave at LOW (no-op)
+
+    Updates the report file in place unless --dry-run is given.
+    """
+    import json as _json
+    from .nova_evaluator import (
+        _EmbeddingModelHandle,
+        apply_verdict,
+        evaluate_batch,
+        filter_nova_findings,
+    )
+    from .knowledge.rule_pack_loader import load_all_rules
+
+    data = _json.loads(report_path.read_text())
+    raw_findings = data.get("findings", [])
+
+    # Reconstruct minimal Finding objects for evaluator. We only need
+    # rule_id, severity, summary, and evidence[0].snippet — that's what
+    # the evaluator reads. We don't round-trip everything; the apply step
+    # mutates the dict directly.
+    from .rules import Confidence, Evidence, Finding, Severity
+    findings = []
+    for entry in raw_findings:
+        rid = entry.get("rule_id", "")
+        if not rid.startswith("nova."):
+            continue
+        sev = Severity(entry.get("severity", "low"))
+        evidence = []
+        for ev_dict in entry.get("evidence", []) or []:
+            evidence.append(Evidence(
+                description=ev_dict.get("description", ""),
+                snippet=ev_dict.get("snippet"),
+            ))
+        findings.append((entry, Finding(
+            rule_id=rid,
+            title=entry.get("title", rid),
+            severity=sev,
+            confidence=Confidence(entry.get("confidence", "medium")),
+            summary=entry.get("summary", ""),
+            evidence=evidence,
+            references=list(entry.get("references", []) or []),
+        )))
+
+    if not findings:
+        click.echo("No NOVA findings in report — nothing to do.")
+        raise SystemExit(0)
+
+    rules = load_all_rules()
+
+    embedder = None if no_semantics else _EmbeddingModelHandle.get()
+    backend = None
+    if not no_llm:
+        from .batch_verifier import (
+            ClaudeCodeBackend, CodexCLIBackend,
+            AnthropicAPIBackend, OpenAICompatibleBackend,
+        )
+        backend_map = {
+            "claude-cli": ClaudeCodeBackend,
+            "codex-cli": CodexCLIBackend,
+            "anthropic-api": AnthropicAPIBackend,
+            "openai-api": OpenAICompatibleBackend,
+        }
+        backend = backend_map[verifier]()
+        if not backend.available():
+            click.echo(
+                f"WARNING: {verifier} backend unavailable; skipping llm gate.",
+                err=True,
+            )
+            backend = None
+
+    only_findings = [f for _, f in findings]
+    verdicts = evaluate_batch(only_findings, embedder=embedder, backend=backend, rules=rules)
+
+    promoted = demoted = unchanged = 0
+    for (entry, _f), verdict in zip(findings, verdicts):
+        if verdict.new_severity is None:
+            unchanged += 1
+            continue
+        if not quiet:
+            click.echo(
+                f"  {verdict.finding.rule_id}: "
+                f"{verdict.finding.severity.value} → {verdict.new_severity.value}  "
+                f"({verdict.rationale})"
+            )
+        if verdict.new_severity.order > verdict.finding.severity.order:
+            promoted += 1
+        else:
+            demoted += 1
+        if not dry_run:
+            entry["severity"] = verdict.new_severity.value
+            entry.setdefault("references", []).append(
+                f"nova-evaluator:{verdict.rationale}"
+            )
+
+    click.echo(
+        f"\nNOVA evaluator: {len(verdicts)} findings — "
+        f"promoted={promoted}, demoted={demoted}, unchanged={unchanged}"
+    )
+    if not dry_run:
+        report_path.write_text(_json.dumps(data, indent=2, default=str))
+        click.echo(f"Updated {report_path}")
+
+
+# ---------------------------------------------------------------------------
+# cross-mode subcommand — M2 Phase 2 entry point.
+#
+# Per D4 (settled): separate subcommand over saved scan outputs, NOT
+# auto-invoked inside `scan`. This keeps the execution boundary
+# explicit so debugging "did the dynamic detector change, or did the
+# linker change?" is a one-step bisect.
+#
+# Per D5 (settled): the linker assumes findings have ALREADY been
+# filtered against user-config suppressions. Findings produced by
+# `scan` go through `_apply_project_config()` before being written
+# to the JSON report — so a saved `audit-*.json` carries
+# already-suppressed findings and is safe to feed to the linker
+# directly.
+# ---------------------------------------------------------------------------
+
+
+def _load_forensic_bundle(forensic_path: Path) -> dict:
+    """Read a saved scan JSON. Validates the minimal shape we need."""
+    if not forensic_path.exists():
+        raise click.ClickException(
+            f"Forensic report not found: {forensic_path}\n"
+            f"Pass the path to a JSON file produced by `agent-audit scan --output DIR`."
+        )
+    try:
+        raw = json.loads(forensic_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(
+            f"Could not parse {forensic_path} as JSON: {exc}"
+        )
+    if not isinstance(raw, dict):
+        raise click.ClickException(
+            f"{forensic_path} does not look like a scan report (expected object at top)."
+        )
+    if "sessions" not in raw or "findings" not in raw:
+        raise click.ClickException(
+            f"{forensic_path} is missing `sessions` or `findings` — does not look "
+            f"like a scan JSON. Generate one with `agent-audit scan --output DIR`."
+        )
+    return raw
+
+
+def _findings_by_session(findings: list) -> dict:
+    """Group findings by session_id. Findings without a session_id (e.g.
+    config-level) are grouped under empty-string key so callers can ignore."""
+    out: dict = {}
+    for f in findings:
+        sid = f.get("session_id") or ""
+        out.setdefault(sid, []).append(f)
+    return out
+
+
+def _build_cross_mode_report(
+    raw: dict,
+    *,
+    repo_root_override: Optional[Path] = None,
+    static_findings_by_repo: Optional[dict] = None,
+) -> dict:
+    """Run cross-mode linker over every session in the saved scan.
+
+    Args:
+        raw: parsed forensic scan JSON.
+        repo_root_override: if provided, force every session to be
+            analyzed against this single repo.
+        static_findings_by_repo: optional dict keyed by repo_root
+            (str) → list of (rule_id, severity, canonical_class) triples
+            from a paired `scan-project` run on that repo. The linker
+            consults these alongside the inventory tags.
+
+    Returns a dict with:
+      - aggregate_records: list of aggregate records, one entry per
+        firing of any correlator across all sessions
+      - tag_applications: per-finding-id list of tags to apply (e.g.
+        `context_demoted`)
+      - sessions_processed: count of sessions we actually attempted
+      - sessions_unlinkable: count + reasons
+      - inventories: per-session resolved repo path + active tags
+      - static_findings_used: count of static findings that fed into
+        the linker, for diagnostics
+
+    The linker contract is honest about unlinkable sessions; this
+    output preserves that honesty for downstream consumers.
+    """
+    from .cross_mode import (
+        build_repo_signal_inventory,
+        clear_inventory_cache,
+        findings_to_link_input,
+        link_signals,
+        resolve_session_repo,
+    )
+
+    findings_by_session = _findings_by_session(raw.get("findings", []))
+    sessions = raw.get("sessions", [])
+    static_findings_by_repo = static_findings_by_repo or {}
+
+    # finding_id lookup so tag_applications can resolve from rule_id back
+    # to specific finding IDs in the saved bundle. Per the linker
+    # contract, tag_applications are keyed by rule_id; the CLI maps to
+    # finding_id for the report so users know exactly which finding got
+    # demoted.
+    findings_by_session_and_rule: dict = {}
+    for f in raw.get("findings", []):
+        sid = f.get("session_id") or ""
+        rid = f.get("rule_id") or ""
+        fid = f.get("finding_id") or ""
+        findings_by_session_and_rule.setdefault((sid, rid), []).append(fid)
+
+    aggregate_records: list = []
+    tag_applications: dict = {}  # finding_id -> list of tags
+    inventories_per_session: dict = {}
+    unlinkable_reasons: list = []
+
+    # Cache stays warm across sessions in the same repo — common case
+    # in monorepos with multiple agent sessions per project.
+    clear_inventory_cache()
+
+    for session in sessions:
+        sid = session.get("session_id") or ""
+        cwd = session.get("cwd")
+        repo_root = repo_root_override if repo_root_override else resolve_session_repo(cwd)
+
+        if repo_root is None:
+            unlinkable_reasons.append({
+                "session_id": sid,
+                "reason": "no_repo_resolved",
+                "cwd": cwd,
+            })
+            continue
+
+        inv = build_repo_signal_inventory(repo_root)
+        if inv is None:
+            unlinkable_reasons.append({
+                "session_id": sid,
+                "reason": "inventory_build_failed",
+                "cwd": cwd,
+                "repo_root": str(repo_root),
+            })
+            continue
+
+        inventories_per_session[sid] = {
+            "repo_root": str(inv.repo_root),
+            "active_tags": inv.active_tags,
+        }
+
+        session_findings = findings_by_session.get(sid, [])
+        link_input = findings_to_link_input(session_findings)
+
+        # Look up static findings keyed by repo_root. Multiple sessions
+        # in the same repo share the same static findings list.
+        static_for_repo = static_findings_by_repo.get(str(inv.repo_root), [])
+
+        out = link_signals(
+            session_id=sid,
+            session_cwd=cwd,
+            inventory=inv,
+            dynamic_findings=link_input,
+            static_findings=static_for_repo,
+        )
+
+        for record in out.aggregate_records:
+            aggregate_records.append({
+                "id": record.id,
+                "correlator": record.correlator,
+                "canonical_class": record.canonical_class,
+                "severity": record.severity,
+                "confidence": record.confidence,
+                "session_id": record.session_id,
+                "repo_root": str(record.repo_root) if record.repo_root else None,
+                "supporting_signal_ids": record.supporting_signal_ids,
+                "evidence": record.evidence,
+                "tags": record.tags,
+                "rationale": record.rationale,
+            })
+
+        # Map rule_id-keyed tag applications back to finding_ids
+        for rule_id, tags in out.tag_applications.items():
+            for fid in findings_by_session_and_rule.get((sid, rule_id), []):
+                existing = tag_applications.setdefault(fid, [])
+                for t in tags:
+                    if t not in existing:
+                        existing.append(t)
+
+    return {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "package_version": __version__,
+        "aggregate_records": aggregate_records,
+        "tag_applications": tag_applications,
+        "sessions_processed": len(sessions) - len(unlinkable_reasons),
+        "sessions_total": len(sessions),
+        "sessions_unlinkable": unlinkable_reasons,
+        "inventories": inventories_per_session,
+        "static_findings_provided_for_repos": list(static_findings_by_repo.keys()),
+        "static_findings_total": sum(
+            len(v) for v in static_findings_by_repo.values()
+        ),
+    }
+
+
+def _render_cross_mode_markdown(report: dict) -> str:
+    """Human-readable summary of cross-mode results.
+
+    Keep it short — this is supplementary, not a replacement for the
+    main forensic bundle.
+    """
+    lines: list = []
+    lines.append("# Cross-mode signal report")
+    lines.append("")
+    lines.append(f"_Generated: {report['generated_at']}_")
+    lines.append(f"_agent-audit {report['package_version']}_")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"- Sessions processed: {report['sessions_processed']} / {report['sessions_total']}")
+    lines.append(f"- Sessions unlinkable: {len(report['sessions_unlinkable'])}")
+    lines.append(f"- Aggregate records produced: {len(report['aggregate_records'])}")
+    lines.append(f"- Findings with priority demotion: {len(report['tag_applications'])}")
+    lines.append("")
+
+    if not report["aggregate_records"] and not report["tag_applications"]:
+        lines.append("_No cross-mode signals fired. This is a normal outcome — most "
+                     "sessions don't have static + dynamic correlation. The "
+                     "absence of aggregate records is itself information._")
+        lines.append("")
+        return "\n".join(lines) + "\n"
+
+    if report["aggregate_records"]:
+        # Group by correlator for readability
+        by_correlator: dict = {}
+        for rec in report["aggregate_records"]:
+            by_correlator.setdefault(rec["correlator"], []).append(rec)
+
+        lines.append("## Aggregate records (by correlator)")
+        lines.append("")
+        for correlator, recs in sorted(by_correlator.items()):
+            lines.append(f"### `{correlator}` — {len(recs)} record(s)")
+            lines.append("")
+            for r in recs:
+                lines.append(f"- **{r['id']}** "
+                             f"severity=`{r['severity']}` "
+                             f"confidence=`{r['confidence']}` "
+                             f"session=`{r['session_id']}`")
+                lines.append(f"    - Class: `{r['canonical_class']}`")
+                lines.append(f"    - Supporting: {', '.join(f'`{s}`' for s in r['supporting_signal_ids'])}")
+                lines.append(f"    - Rationale: {r['rationale']}")
+                lines.append("")
+
+    if report["tag_applications"]:
+        lines.append("## Priority demotions")
+        lines.append("")
+        lines.append("Per D3, severity is preserved; only priority/attention is demoted.")
+        lines.append("")
+        for fid, tags in sorted(report["tag_applications"].items()):
+            lines.append(f"- `{fid}` → tags: {', '.join(f'`{t}`' for t in tags)}")
+        lines.append("")
+
+    if report["sessions_unlinkable"]:
+        lines.append(f"## Unlinkable sessions ({len(report['sessions_unlinkable'])})")
+        lines.append("")
+        lines.append("_Per design §6.3 — unlinkable is a normal outcome, not an error._")
+        lines.append("")
+        # Group by reason
+        by_reason: dict = {}
+        for u in report["sessions_unlinkable"]:
+            by_reason.setdefault(u["reason"], []).append(u)
+        for reason, items in sorted(by_reason.items()):
+            lines.append(f"- **{reason}**: {len(items)} session(s)")
+        lines.append("")
+
+    return "\n".join(lines) + "\n"
+
+
+def _load_scan_project_bundle(scan_project_path: Path) -> dict:
+    """Read a saved scan-project JSON output. Validates minimal shape.
+
+    The file is produced by `agent-audit scan-project --output <dir>`
+    and contains a `findings` array plus repo metadata. We accept the
+    same lenient shape as the forensic loader — missing optional fields
+    are tolerated.
+    """
+    if not scan_project_path.exists():
+        raise click.ClickException(
+            f"scan-project bundle not found: {scan_project_path}\n"
+            f"Pass the path to a JSON file produced by "
+            f"`agent-audit scan-project --output DIR`."
+        )
+    try:
+        raw = json.loads(scan_project_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(
+            f"Could not parse {scan_project_path} as JSON: {exc}"
+        )
+    if not isinstance(raw, dict):
+        raise click.ClickException(
+            f"{scan_project_path} does not look like a scan-project report."
+        )
+    if "findings" not in raw:
+        raise click.ClickException(
+            f"{scan_project_path} is missing `findings` — does not look "
+            f"like a scan-project bundle."
+        )
+    return raw
+
+
+def _extract_static_findings_by_repo(
+    scan_project_raw: dict,
+    *,
+    repo_root_override: Optional[Path] = None,
+) -> dict:
+    """Project a scan-project JSON into the dict shape the cross-mode
+    builder expects: {repo_root_str: [(rule_id, severity, canonical_class), ...]}.
+
+    A scan-project run can cover multiple repos (`repos_scanned` field).
+    Each finding has a `source_paths` field that points back to the
+    file it came from; we use the longest common prefix among those
+    paths that matches a `repos_scanned` entry to determine which
+    repo the finding belongs to.
+
+    When `repo_root_override` is set, all findings are attributed to
+    that single repo path — matches the CLI's repo-root override
+    semantics.
+    """
+    from .cross_mode import static_findings_to_link_input
+
+    findings = scan_project_raw.get("findings") or []
+    repos_scanned = scan_project_raw.get("repos_scanned") or []
+
+    triples = static_findings_to_link_input(findings)
+
+    # Map each (rule_id, severity, canonical_class) triple → repo_root
+    # by associating it with the original finding's source_paths.
+    out: dict = {}
+
+    if repo_root_override is not None:
+        # Single-repo override: all findings go to one bucket
+        out[str(repo_root_override.resolve())] = triples
+        return out
+
+    # Multi-repo case: attribute each finding to its repo via source paths.
+    # When a finding's source paths don't match any repo (rare, e.g.
+    # config findings from outside a repo), fall back to the first
+    # repos_scanned entry; if none, drop the finding from cross-mode.
+    triples_by_idx = {idx: t for idx, t in enumerate(triples)}
+    for idx, finding in enumerate(findings):
+        if idx not in triples_by_idx:
+            continue  # adapter dropped it (no rule_id)
+        triple = triples_by_idx[idx]
+        sources = finding.get("source_paths") or []
+        # Find the repo that contains this finding's source paths
+        attributed = None
+        for repo_str in repos_scanned:
+            if any(str(s).startswith(str(repo_str)) for s in sources):
+                attributed = str(repo_str)
+                break
+        if attributed is None and repos_scanned:
+            attributed = str(repos_scanned[0])
+        if attributed is None:
+            continue
+        # Resolve to absolute path so it matches what the resolver produces
+        try:
+            attributed = str(Path(attributed).resolve())
+        except (OSError, RuntimeError):
+            pass
+        out.setdefault(attributed, []).append(triple)
+
+    return out
+
+
+@main.command("cross-mode")
+@click.option(
+    "--forensic", "forensic_path", type=click.Path(path_type=Path), required=True,
+    help="Path to a saved scan JSON (e.g. audit-2026-04-01-120000.json from `agent-audit scan --output DIR`).",
+)
+@click.option(
+    "--scan-project", "scan_project_path", type=click.Path(path_type=Path),
+    default=None,
+    help="Optional path to a saved scan-project JSON. When provided, "
+         "static findings from the project scan supplement inventory "
+         "tags as the static-side condition for correlators. A "
+         "rule-pack-confirmed match is a sharper signal than a tag.",
+)
+@click.option(
+    "--repo-root", "repo_root_override", type=click.Path(path_type=Path),
+    default=None,
+    help="Override repo root resolution. By default, each session's "
+         "cwd is used to walk up to a repo marker. Pass a path to force "
+         "every session to be analyzed against this single repo.",
+)
+@click.option(
+    "--output", "output_dir", type=click.Path(path_type=Path),
+    default=None,
+    help="Directory to write cross-mode-findings.json + cross-mode-report.md. "
+         "If omitted, results print to stdout only.",
+)
+@click.option(
+    "--format", "output_format", type=click.Choice(["json", "md", "both"]),
+    default="both",
+    help="When --output is set, choose what files to write.",
+)
+@click.option(
+    "--quiet", is_flag=True, help="Suppress progress output to stdout.",
+)
+def cross_mode_cmd(
+    forensic_path: Path,
+    scan_project_path: Optional[Path],
+    repo_root_override: Optional[Path],
+    output_dir: Optional[Path],
+    output_format: str,
+    quiet: bool,
+) -> None:
+    """Run cross-mode signal flow over a saved scan report (M2 Phase 2).
+
+    \b
+    Per D4: this is a separate subcommand over saved outputs, not
+    auto-invoked inside `scan`. This keeps the execution boundary
+    explicit and makes rollout reversible.
+
+    \b
+    The linker takes findings AS RECORDED in the scan JSON. Per D5,
+    those findings have already been filtered against user-config
+    suppressions during the original scan; the linker honors that
+    filter by not consulting suppression machinery itself.
+
+    \b
+    Per D2, aggregate records cap severity at max(component severities).
+    No invention; cross-mode support raises priority, not severity.
+
+    \b
+    When --scan-project is provided, static findings supplement
+    inventory tags. A rule-pack-confirmed match is a SHARPER signal
+    than a coarse pattern-derived tag — both can satisfy a correlator's
+    static-side condition; both firing produces stronger evidence.
+    """
+    raw = _load_forensic_bundle(forensic_path)
+
+    if not quiet:
+        console.print(f"[dim]Loading scan: {forensic_path}[/dim]")
+        n_sessions = len(raw.get("sessions", []))
+        n_findings = len(raw.get("findings", []))
+        console.print(f"[dim]  {n_sessions} session(s), {n_findings} finding(s)[/dim]")
+        if repo_root_override:
+            console.print(f"[dim]Repo root override: {repo_root_override}[/dim]")
+
+    if repo_root_override:
+        try:
+            repo_root_override = repo_root_override.resolve()
+        except (OSError, RuntimeError):
+            raise click.ClickException(f"--repo-root path invalid: {repo_root_override}")
+        if not repo_root_override.exists():
+            raise click.ClickException(f"--repo-root does not exist: {repo_root_override}")
+
+    # Load optional scan-project bundle and project to per-repo static findings
+    static_findings_by_repo: Optional[dict] = None
+    if scan_project_path:
+        sp_raw = _load_scan_project_bundle(scan_project_path)
+        static_findings_by_repo = _extract_static_findings_by_repo(
+            sp_raw, repo_root_override=repo_root_override,
+        )
+        if not quiet:
+            sp_count = sum(len(v) for v in static_findings_by_repo.values())
+            n_repos = len(static_findings_by_repo)
+            console.print(f"[dim]Loading scan-project: {scan_project_path}[/dim]")
+            console.print(f"[dim]  {sp_count} static finding(s) across {n_repos} repo(s)[/dim]")
+
+    report = _build_cross_mode_report(
+        raw,
+        repo_root_override=repo_root_override,
+        static_findings_by_repo=static_findings_by_repo,
+    )
+
+    # Console summary
+    if not quiet:
+        console.print()
+        console.print(f"[bold]Cross-mode results[/bold]")
+        console.print(f"  Sessions processed: {report['sessions_processed']} / {report['sessions_total']}")
+        console.print(f"  Aggregate records:  {len(report['aggregate_records'])}")
+        console.print(f"  Priority demotions: {len(report['tag_applications'])}")
+        console.print(f"  Unlinkable:         {len(report['sessions_unlinkable'])}")
+        if report.get("static_findings_total", 0) > 0:
+            console.print(
+                f"  Static findings fed in: {report['static_findings_total']} "
+                f"across {len(report.get('static_findings_provided_for_repos', []))} repo(s)"
+            )
+        if report["aggregate_records"]:
+            console.print()
+            console.print("  [bold]By correlator:[/bold]")
+            counts: dict = {}
+            for rec in report["aggregate_records"]:
+                counts[rec["correlator"]] = counts.get(rec["correlator"], 0) + 1
+            for correlator, n in sorted(counts.items()):
+                console.print(f"    {correlator}: {n}")
+
+    if output_dir:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if output_format in ("json", "both"):
+            json_path = output_dir / "cross-mode-findings.json"
+            json_path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+            if not quiet:
+                console.print(f"  [green]Wrote:[/green] {json_path}")
+        if output_format in ("md", "both"):
+            md_path = output_dir / "cross-mode-report.md"
+            md_path.write_text(_render_cross_mode_markdown(report), encoding="utf-8")
+            if not quiet:
+                console.print(f"  [green]Wrote:[/green] {md_path}")
 
 
 if __name__ == "__main__":

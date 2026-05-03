@@ -1,0 +1,21 @@
+{
+  "id": "c17-d2-high-plus-high-stays-high",
+  "title": "Two HIGH dynamic findings + bypass tag → aggregate severity HIGH (D2: no escalation to CRITICAL)",
+  "agent": "claude_code",
+  "description": "D2 boundary case. Two HIGH findings (autonomy-with-exfil-chain + destructive-without-backup) plus the bypass tag. Per D2 settled decision, the aggregate severity caps at max(components) = HIGH. NEVER escalates to CRITICAL just because two HIGH signals correlate. This invariant is what CI gates downstream rely on.",
+  "source_type": "synthetic_calibration",
+  "tags": ["approval-bypass", "d2-cap-at-max", "severity-propagation"],
+  "m2_expected": {
+    "expected_correlator": "repo_approval_gap_supports_autonomy_risk",
+    "expected_link": true,
+    "expected_repo_tags": ["has_broad_action_without_approval", "has_instruction_files"],
+    "expected_dynamic_finding_kind": "MULTIPLE",
+    "expected_dynamic_findings": [
+      ["C3.autonomy-with-exfil-chain", "high"],
+      ["AG-04.destructive-without-backup", "high"]
+    ],
+    "expected_aggregate_severity": "high",
+    "expected_proximity_minimum": 1,
+    "rationale": "Per D2: cap_severity({high, high}) = high. Critical is NEVER produced by joining; only by a primary finding that itself is critical. Severity is a stable communication channel — downstream CI gates rely on the invariant that joining cannot manufacture severity."
+  }
+}

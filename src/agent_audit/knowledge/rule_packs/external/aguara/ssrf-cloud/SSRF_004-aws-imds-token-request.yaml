@@ -4,14 +4,14 @@
 # Adapted from SSRF_004 (https://github.com/garagon/aguara)
 # Apache-2.0 (c) 2026 garagon
 # Source: Aguara
-# Severity: critical  |  ASAMM: AI-03 (+AI-06,AO-01)
+# Severity: critical  |  ASAMM: AG-04 (+AD-04)
 # =============================================================
 external_source:
   tool: aguara
   original_id: SSRF_004
   original_title: AWS IMDS token request
-  source_version: HEAD 2026-04-21
-  import_date: '2026-04-21'
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
   upstream: https://github.com/garagon/aguara
   license: Apache-2.0 (c) 2026 garagon
 agent_audit_id: aguara.ssrf-cloud.aws-imds-token-request
@@ -22,15 +22,13 @@ category: ssrf-cloud
 audit_surface:
 - instruction_file
 - skill_md
-- session_tool_call
+- tool_description
 asamm:
-  primary: AI-03
+  primary: AG-04
   secondary:
-  - AI-06
-  - AO-01
+  - AD-04
   mapping_confidence: category-default
   notes: Category-level default at import. Review per rule.
-targets: []
 match_mode: any
 patterns:
 - type: contains

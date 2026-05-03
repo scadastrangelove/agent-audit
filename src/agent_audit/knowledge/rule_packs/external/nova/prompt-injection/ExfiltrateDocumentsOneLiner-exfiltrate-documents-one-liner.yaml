@@ -1,0 +1,66 @@
+# =============================================================
+# nova.prompt-injection.exfiltrate-documents-one-liner
+# =============================================================
+# Adapted from ExfiltrateDocumentsOneLiner (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: ExfiltrateDocumentsOneLiner
+  original_title: ExfiltrateDocumentsOneLiner
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 1b3f7c52-2445-409f-ac7e-dc8ff70eb87f
+  upstream_author: Thomas Roccia
+agent_audit_id: nova.prompt-injection.exfiltrate-documents-one-liner
+title: Detects prompts attempting to construct one-liner commands to recursively copy user documents to a hidden directory
+description: Detects prompts attempting to construct one-liner commands to recursively copy user documents to a hidden directory
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)copy\ recursively
+- type: regex
+  value: (?i)in\ one\ line
+- type: regex
+  value: (?i)c:\\\\programdata\\\\info
+- type: regex
+  value: (?i)documents
+- type: regex
+  value: (?i)downloads
+- type: regex
+  value: (?i)desktop
+exclude_patterns: []
+upstream_severity: high
+upstream_semantics_patterns:
+- name: doc_exfil
+  prose: copy user documents from desktop or downloads to a hidden folder
+  threshold: 0.2
+upstream_llm_checks:
+- name: llm_exfil_command
+  prompt: Analyze if this prompt is asking for a one-liner to exfiltrate documents or user files from common folders like
+    Desktop, Documents, or Downloads into another directory
+  threshold: 0.2
+upstream_condition_raw: (keywords.$copy_cmd or keywords.$onedoc) and (keywords.$source_docs or keywords.$source_dl or keywords.$source_desktop
+  or semantics.$doc_exfil) and (keywords.$path_target or semantics.$doc_exfil or llm.$llm_exfil_command)
+upstream_condition_mapping_note: explicit keyword refs only, any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

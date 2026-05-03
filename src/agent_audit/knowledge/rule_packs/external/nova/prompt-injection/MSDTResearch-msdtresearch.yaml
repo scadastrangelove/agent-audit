@@ -1,0 +1,54 @@
+# =============================================================
+# nova.prompt-injection.msdtresearch
+# =============================================================
+# Adapted from MSDTResearch (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: MSDTResearch
+  original_title: MSDTResearch
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: d48081c0-0470-4f5d-bcf6-9f58a974bac2
+  upstream_author: '@bees@infosec.exchange'
+agent_audit_id: nova.prompt-injection.msdtresearch
+title: Extracting details about MSDT related vulnerabilities
+description: Extracting details about MSDT related vulnerabilities
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (CVE-2022-30190)
+- type: regex
+  value: (Follina|MSDT|Support Diagnostic Tool|malicious uri|office protected mode)
+- type: regex
+  value: (schemas\.openxmlformats\.org\/officeDocument\/2006\/relationships\/oleObject|ms-msdt\:\/id|IT_BrowseForFile| HKEY_CLASSES_ROOT\\ms\-msdt)
+exclude_patterns: []
+upstream_severity: high
+upstream_llm_checks:
+- name: exploit
+  prompt: Is this prompt attempting to learn how to exploit Microsoft Office?
+  threshold: 0.35
+upstream_condition_raw: (any of keywords.*) and (any of llm.*)
+upstream_condition_mapping_note: mixed condition; keyword side approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

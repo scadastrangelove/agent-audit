@@ -1,0 +1,51 @@
+# =============================================================
+# aguara.credential-leak.ssh-private-key-in-command
+# =============================================================
+# Adapted from CRED_016 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CRED_016
+  original_title: SSH private key in command
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.credential-leak.ssh-private-key-in-command
+title: SSH private key in command
+description: Detects SSH or SCP commands referencing private key files
+severity_default: medium
+category: credential-leak
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(ssh|scp|sftp)\s+(-[a-zA-Z]\s+)*-i\s+["']?[^\s]+\.(pem|key|ppk)
+- type: regex
+  value: (?i)(ssh|scp|sftp)\s+(-[a-zA-Z]\s+)*-i\s+["']?~/?\.(ssh|gnupg)/[^\s]+
+exclude_patterns: []
+remediation: Use SSH agent forwarding or config-based identity files instead of explicit -i flags. Never commit key paths
+  in docs.
+examples:
+  true_positive:
+  - ssh -i ~/.ssh/prod_key.pem user@server.com
+  - scp -i mykey.pem file.txt user@host:/path
+  false_positive:
+  - ssh user@server.com
+  - Generate an SSH key with ssh-keygen

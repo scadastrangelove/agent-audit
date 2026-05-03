@@ -61,6 +61,7 @@ generic scanners usually miss.
 | --- | --- | --- | --- |
 | `scan` | Local agent home, configs, hooks, session logs | Verified-first forensic report bundle | Incident review, local environment audit, suspicious agent runs |
 | `scan-project` | One repo or a corpus of repos with instruction surfaces | Project findings, clustered findings, security profile, collection-scale patterns | Pre-release repo audit, third-party repo triage, corpus research |
+| `cross-mode` | Saved `scan` output + optional `scan-project` output | Cross-signal aggregate records linking static repo surface to dynamic session findings | Investigations where static and dynamic findings share a repo and reinforce each other |
 
 ## How it works
 
@@ -284,6 +285,9 @@ No active defense — read-only analysis with consent prompts at every step.
 Generates ready-to-review config patches, but never applies them.
 
 See [ROADMAP.md](ROADMAP.md) for what's coming.
+See [docs/rules-expansion-roadmap.md](docs/rules-expansion-roadmap.md)
+for planned additions to signature sources (Aguara upgrade, NOVA,
+Gitleaks, OWASP MCP Top 10 mapping, MITRE ATLAS validation).
 See [docs/architecture.md](docs/architecture.md) for the technical
 architecture — pipeline stages, module layout, how to add detectors/
 surfaces/rules. Start here if you're picking up the project.

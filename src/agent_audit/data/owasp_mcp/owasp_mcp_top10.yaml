@@ -1,0 +1,55 @@
+name: OWASP MCP Top 10
+year: 2025
+version: v0.1-beta-2025
+license: CC BY-SA 4.0
+source: https://github.com/OWASP/www-project-mcp-top-10
+categories:
+- id: MCP01
+  title: Token Mismanagement and Secret Exposure
+  description: In MCP-based systems, tokens and credentials serve as the primary means of authentication and authorization between models, tools, and servers. Developers frequently mishandle these secrets,
+    embedding them in configuration files, environment variables, prompt templates, or even allowing them to persist within model context memory. In some cases, credentials may also reside in internal documents
+    that are inadvertently ingested into a RAG database, exposing them to adversaries.
+- id: MCP02
+  title: Privilege Escalation via Scope Creep
+  description: Scope creep occurs when temporary or narrowly scoped permissions granted to an MCP agent or tool are expanded over time—intentionally for convenience or accidentally through configuration
+    drift—until the agent holds broad or administrative privileges.
+- id: MCP03
+  title: Tool Poisoning
+  description: Schema poisoning occurs when an adversary tampers with the contract or schema definitions that govern agent-to-tool interactions in an MCP ecosystem. Schemas define the shape, types, and
+    semantics of requests and responses — effectively the “language” agents use to call tools. If an attacker can modify a schema (or its metadata) so that a benign-sounding operation maps to a destructive
+    action, agents that trust and follow the schema may inadvertently execute dangerous commands.
+- id: MCP04
+  title: Software Supply Chain Attacks & Dependency Tampering
+  description: MCP environments rely heavily on third-party components — SDKs, connectors, protocol servers, vector database clients, plugins, and model-side tool integrations. Because these software modules
+    often run within trusted execution paths, a compromised dependency can alter agent behavior, introduce hidden backdoors, or modify protocol semantics without triggering detection.
+- id: MCP05
+  title: Command Injection & Execution
+  description: 'Command injection in MCP environments occurs when an AI agent constructs and executes system commands, shell scripts, API calls, or code snippets using untrusted input whether from user
+    prompts, retrieved context, or third-party data sources without proper validation or sanitization. Unlike traditional command injection where attackers directly control input fields, MCP-based command
+    injection is mediated through the model layer: the agent interprets natural language instructions and translates them into executable operations. This creates a unique attack surface where:'
+- id: MCP06
+  title: Intent Flow Subversion
+  description: The **Intent Flow** is the critical path where an agent translates a user’s high-level request into a structured sequence of tool calls and actions. In an MCP-enabled ecosystem, the agent
+    retrieves "Context" (documents from resources, schema definitions, and tool outputs) to inform its planning.
+- id: MCP07
+  title: Insufficient Authentication & Authorization
+  description: Inadequate authentication and authorization occur when MCP servers, tools, or agents fail to properly verify identities or enforce access controls during interactions. Since MCP ecosystems
+    often involve multiple agents, users, and services exchanging data and executing actions, weak or missing identity validation exposes critical attack paths.
+- id: MCP08
+  title: Lack of Audit and Telemetry
+  description: MCP (Model Context Protocol) systems often orchestrate complex, autonomous workflows — performing data retrieval, tool execution, and decision-making with minimal human intervention. When
+    audit logging and telemetry are absent or poorly implemented, organizations lose visibility into what actions agents perform, what data they access, and how decisions are made. A lack of comprehensive
+    logging not only undermines incident response and forensic analysis, but also obscures compliance violations, insider abuse, and model misbehavior. In AI-integrated environments, this gap becomes even
+    more critical — an unmonitored agent can silently perform sensitive operations or exfiltrate data for weeks without detection.
+- id: MCP09
+  title: Shadow MCP Servers
+  description: “Shadow MCP Servers” refer to unapproved or unsupervised deployments of Model Context Protocol instances that operate outside the organization’s formal security governance. Much like Shadow
+    IT, these rogue MCP nodes are often spun up by developers, research teams, or data scientists for experimentation, testing, or convenience—frequently using default credentials, permissive configurations,
+    or unsecured APIs. MCP servers can expose sensitive capabilities—such as data retrieval, tool execution, or model control—these unsanctioned deployments become invisible backdoors into enterprise systems.
+    They often bypass centralized authentication, monitoring, and data governance controls, making them a prime target for attackers and a compliance liability for organizations.
+- id: MCP10
+  title: Context Injection & Over-Sharing
+  description: In MCP-based systems, context acts as the working memory for agents — storing prompts, retrieved documents, intermediate reasoning, and interaction history. When this context is shared, persistently
+    stored, or insufficiently scoped, sensitive information from one session, agent, or user can leak into another. Context Injection occurs when malicious or unintended content is embedded into this shared
+    memory, influencing how future requests are processed. Over-Sharing happens when context is reused across agents or workflows that should be isolated (e.g., customer support and marketing). Together,
+    these issues cause private or sensitive information to propagate beyond its intended boundaries, leading to privacy violations, regulatory exposure, and corrupted agent behavior.

@@ -1,0 +1,53 @@
+# =============================================================
+# aguara.command-execution.shell-subprocess-with-shell-true
+# =============================================================
+# Adapted from CMDEXEC_001 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AD-02 (+AG-02,AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CMDEXEC_001
+  original_title: Shell subprocess with shell=True
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.command-execution.shell-subprocess-with-shell-true
+title: Shell subprocess with shell=True
+description: Detects subprocess calls with shell=True which enables shell injection
+severity_default: medium
+category: command-execution
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AD-02
+  secondary:
+  - AG-02
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+- '*.py'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)subprocess\.(run|call|Popen|check_output|check_call)\s*\([^)]*shell\s*=\s*True
+- type: regex
+  value: (?i)shell\s*[=:]\s*(true|True|1)\b
+exclude_patterns: []
+remediation: Avoid shell=True and eval(). Use subprocess with explicit argument lists. Validate all inputs before execution.
+examples:
+  true_positive:
+  - subprocess.run(cmd, shell=True)
+  - subprocess.Popen(user_input, shell=True)
+  - 'shell: true'
+  false_positive:
+  - subprocess.run(['ls', '-la'])
+  - 'shell: false'
+  - shell = false

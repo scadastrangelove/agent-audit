@@ -1,0 +1,49 @@
+# =============================================================
+# aguara.supply-chain.symlink-attack
+# =============================================================
+# Adapted from SUPPLY_010 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-04 (+AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SUPPLY_010
+  original_title: Symlink attack
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain.symlink-attack
+title: Symlink attack
+description: Detects symbolic link creation targeting sensitive files
+severity_default: medium
+category: supply-chain
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- plugin_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)ln\s+-s[a-z]*\s+/(etc/(passwd|shadow|sudoers)|root/|var/run/docker)
+- type: regex
+  value: (?i)os\.symlink\s*\([^)]*/(etc/|root/|var/run/|\.ssh/)
+- type: regex
+  value: (?i)symlink\s*\(.*?(passwd|shadow|credentials|private.key|id_rsa)
+exclude_patterns: []
+remediation: Disallow symlink creation to sensitive paths. Use O_NOFOLLOW and validate targets with realpath.
+examples:
+  true_positive:
+  - ln -s /etc/passwd /tmp/harmless
+  - os.symlink('/etc/shadow', '/tmp/data')
+  false_positive:
+  - ln -s /usr/local/bin/myapp /usr/bin/myapp
+  - Create a symlink to your project directory

@@ -1,0 +1,60 @@
+# =============================================================
+# nova.prompt-injection.dprkngorecon
+# =============================================================
+# Adapted from DPRKNGORecon (https://github.com/Nova-Hunting/nova-rules)
+# MIT (c) 2025 Thomas Roccia
+# Source: NOVA
+# Severity: low  |  ASAMM: AI-04 (+AI-05)
+# Note: NOVA's semantics/llm sections are preserved as metadata
+# but not enforced by the current matcher (regex-only).
+# =============================================================
+external_source:
+  tool: nova
+  original_id: DPRKNGORecon
+  original_title: DPRKNGORecon
+  source_version: git-9249cf49dce2
+  import_date: '2026-05-03'
+  upstream: https://github.com/Nova-Hunting/nova-rules
+  license: MIT (c) 2025 Thomas Roccia
+  upstream_uuid: 56bdb9bd-000b-49ce-9550-1136acd70d31
+  upstream_author: '@bees@infosec.exchange'
+agent_audit_id: nova.prompt-injection.dprkngorecon
+title: Researching organizations with DPRK-focused defense or nuclear proliferation research
+description: Researching organizations with DPRK-focused defense or nuclear proliferation research
+severity_default: low
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Derived from NOVA category mapping at import.
+match_mode: any
+patterns:
+- type: regex
+  value: (Welthungerhilfe|Liberty in North Korea|Choson Exchange|Citizens' Alliance for North Korean Human Rights|NKHR|Crossing
+    Borders|NKIDP)
+- type: regex
+  value: (National Committee for North Korea|NCNK|Project Sandstone|38 North|RAND|National Unification|National Bureau of
+    Asian Research|Nautilus Institute|New Focus International|North Korea Intellectuals Solidarity|Nuclear Threat Initiative|Research
+    Institute for National Security Affairs|RINSA|Sejong Institute|Hyundae Pukhan Yongu|Alliance for North Korean Human Rights|KINAC)
+- type: regex
+  value: (Nuclear Nonproliferation|Nonproliferation Studies|Unification Studies|Atomic Scientists|Arms Control|Policy Studies|Strategic
+    Research Center|North Korean Human Rights|Korea Institute)
+- type: regex
+  value: (Dongguk University|University of Central Lancashire)
+exclude_patterns: []
+upstream_severity: high
+upstream_llm_checks:
+- name: victimology
+  prompt: Could this query be used to research victims for computer network operations?
+  threshold: 0.35
+upstream_condition_raw: (any of keywords.*) and (any of llm.*)
+upstream_condition_mapping_note: mixed condition; keyword side approximated as any-of
+upstream_severity_demotion_note: 'Severity floored at LOW on import: NOVA semantics/llm gates are not enforced by the current
+  matcher, so keyword-only signal is weaker than upstream intended. Calibration on benign skills showed multi-word keyword
+  conjunctions firing on innocuous documentation. Lift selectively when M3 NOVA evaluator lands.'

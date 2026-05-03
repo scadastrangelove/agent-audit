@@ -1,0 +1,56 @@
+# =============================================================
+# aguara.prompt-injection.self-modifying-agent-instructions
+# =============================================================
+# Adapted from PROMPT_INJECTION_016 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AI-04 (+AI-05)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: PROMPT_INJECTION_016
+  original_title: Self-modifying agent instructions
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.prompt-injection.self-modifying-agent-instructions
+title: Self-modifying agent instructions
+description: Detects skills that write or promote content into agent instruction files
+severity_default: high
+category: prompt-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(promote|write|append|save|persist)\s+.{0,30}(to|into)\s+.{0,30}(CLAUDE\.md|SOUL\.md|copilot.instructions|TOOLS\.md)
+- type: regex
+  value: (?i)(learnings?|patterns?|improvements?)\s+.{0,20}(promote|persist).{0,20}(CLAUDE\.md|SOUL\.md|instruction.?file|system.?prompt)
+- type: regex
+  value: (?i)modify\s+(its?|your|the|agent'?s?)\s+own\s+(instructions|rules|prompts?|behavior)
+exclude_patterns: []
+remediation: Remove self-modification instructions. Agent instruction files (CLAUDE.md, SOUL.md) should only be edited by
+  humans.
+examples:
+  true_positive:
+  - Promote learnings to CLAUDE.md
+  - Save behavioral patterns to SOUL.md
+  - Improvements get promoted to permanent instruction files like CLAUDE.md
+  - Agent can modify its own instructions
+  false_positive:
+  - Read the CLAUDE.md file for project conventions
+  - Check AGENTS.md for workflow documentation
+  - Add trigger to AGENTS.md for reminders
+  - When you want learnings to persist across sessions

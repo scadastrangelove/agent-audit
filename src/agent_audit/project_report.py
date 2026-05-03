@@ -80,12 +80,12 @@ def build_files_of_concern(findings: List, rerank_result) -> List[dict]:
     return out
 
 
-def build_project_json(abs_path: Path, result, kept: List, rerank_result) -> dict:
+def build_project_json(abs_path: Path, result, kept: List, rerank_result, curation_summary: dict | None = None) -> dict:
     files_of_concern = build_files_of_concern(kept, rerank_result)
     clustered_result = cluster_findings(kept)
     clustered = clustered_result.to_dict()
     security_profile = build_security_profile(clustered_result)
-    return {
+    payload = {
         "path": str(abs_path),
         "repos_scanned": [str(r) for r in result.repos_scanned],
         "files_scanned": result.files_scanned,
@@ -121,9 +121,12 @@ def build_project_json(abs_path: Path, result, kept: List, rerank_result) -> dic
             for f in kept
         ],
     }
+    if curation_summary is not None:
+        payload["curation_summary"] = curation_summary
+    return payload
 
 
-def render_project_markdown(abs_path: Path, result, min_severity: str, kept: List, rerank_result) -> str:
+def render_project_markdown(abs_path: Path, result, min_severity: str, kept: List, rerank_result, curation_summary: dict | None = None) -> str:
     clustered_result = cluster_findings(kept)
     cluster_summary = clustered_result.to_dict()["summary"]
     security_profile = build_security_profile(clustered_result)
@@ -165,6 +168,24 @@ def render_project_markdown(abs_path: Path, result, min_severity: str, kept: Lis
         f"- verification_recommended_issue_instances: {profiles['verification_recommended_issue_instances']}",
         "",
     ]
+
+    if curation_summary is not None:
+        lines.extend(
+            [
+                "## Signature Curation",
+                "",
+                f"- profile: {curation_summary.get('profile')}",
+                f"- input_findings: {curation_summary.get('input_findings')}",
+                f"- output_findings: {curation_summary.get('output_findings')}",
+                f"- suppressed_findings: {curation_summary.get('suppressed_findings')}",
+                f"- collection_scale_suppressed: {curation_summary.get('collection_scale_suppressed')}",
+                f"- severity_downgrades: {curation_summary.get('severity_downgrades')}",
+                f"- confidence_changes: {curation_summary.get('confidence_changes')}",
+                f"- verify_recommended_marked: {curation_summary.get('verify_recommended_marked')}",
+                f"- supporting_only_marked: {curation_summary.get('supporting_only_marked')}",
+                "",
+            ]
+        )
 
     if security_profile["canonical_class_counts"]:
         lines.append("## Canonical Issue Classes")

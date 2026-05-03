@@ -1,0 +1,53 @@
+# =============================================================
+# aguara.mcp-config.docker-capabilities-escalation
+# =============================================================
+# Adapted from MCPCFG_010 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: high  |  ASAMM: AG-04 (+AG-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: MCPCFG_010
+  original_title: Docker capabilities escalation
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.mcp-config.docker-capabilities-escalation
+title: Docker capabilities escalation
+description: Detects --cap-add flags granting dangerous Linux capabilities in container configurations
+severity_default: high
+category: mcp-config
+audit_surface:
+- mcp_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AG-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.json'
+- '*.yaml'
+- '*.yml'
+- '*.toml'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)--cap-add[\s=]\s*(SYS_ADMIN|SYS_PTRACE|NET_ADMIN|ALL|DAC_OVERRIDE|SYS_RAWIO|NET_RAW)
+- type: regex
+  value: (?i)cap_add\s*:\s*.{0,20}(SYS_ADMIN|SYS_PTRACE|NET_ADMIN|ALL|DAC_OVERRIDE|SYS_RAWIO|NET_RAW)
+- type: regex
+  value: (?i)add\s+(capability|cap)\s+.{0,20}(SYS_ADMIN|SYS_PTRACE|NET_ADMIN|ALL|DAC_OVERRIDE|SYS_RAWIO)
+exclude_patterns:
+- type: regex
+  value: (?i)(--cap-drop|cap_drop|remove\s+capability|drop\s+cap)
+remediation: Remove --cap-add and use --cap-drop=ALL, then add back only the minimal capabilities the server actually needs.
+examples:
+  true_positive:
+  - '"args": ["run", "--cap-add=SYS_ADMIN", "mcp-server"]'
+  - "cap_add:\n  - SYS_PTRACE"
+  false_positive:
+  - '"args": ["run", "--cap-drop=ALL", "mcp-server"]'
+  - Always drop unnecessary capabilities

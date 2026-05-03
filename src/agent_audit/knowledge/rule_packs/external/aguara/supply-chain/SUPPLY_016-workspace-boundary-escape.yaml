@@ -1,0 +1,55 @@
+# =============================================================
+# aguara.supply-chain.workspace-boundary-escape
+# =============================================================
+# Adapted from SUPPLY_016 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AG-04 (+AD-04)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: SUPPLY_016
+  original_title: Workspace boundary escape
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.supply-chain.workspace-boundary-escape
+title: Workspace boundary escape
+description: Detects patterns where file tools follow symlinks, resolve mounts, or access paths outside workspace or sandbox
+  boundaries
+severity_default: medium
+category: supply-chain
+audit_surface:
+- instruction_file
+- skill_md
+- mcp_manifest
+- plugin_manifest
+asamm:
+  primary: AG-04
+  secondary:
+  - AD-04
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: any
+patterns:
+- type: regex
+  value: (?i)(can|will|allows?|enables?|provides?|grants?|gives?|lets?)\s+.{0,20}(read|write|access|edit|modify|delete)\s+(any|arbitrary|all)\s+files?\s+(on|in|from|across)\s+(the\s+)?(host|system|machine|disk)
+- type: regex
+  value: (?i)(escape|break.out|bypass|circumvent)\s+.{0,20}(sandbox|workspace|container|chroot|jail|boundary)
+- type: regex
+  value: (?i)(follow|resolve|dereference)\s+(sym)?links?\s+.{0,30}(outside|beyond|above|past)\s+(the\s+)?(workspace|sandbox|root)
+exclude_patterns: []
+remediation: Enforce workspace boundaries by resolving all paths with realpath and rejecting escapes.
+examples:
+  true_positive:
+  - This tool can read any files on the host system
+  - This tool can escape the container sandbox
+  - Follow symlinks outside the workspace to access host files
+  false_positive:
+  - Files are restricted to the workspace directory
+  - The sandbox prevents access to host files
+  - This skill does not modify any files on the system

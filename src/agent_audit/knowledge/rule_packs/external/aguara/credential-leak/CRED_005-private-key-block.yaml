@@ -1,0 +1,45 @@
+# =============================================================
+# aguara.credential-leak.private-key-block
+# =============================================================
+# Adapted from CRED_005 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: critical  |  ASAMM: AG-03 (+AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: CRED_005
+  original_title: Private key block
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.credential-leak.private-key-block
+title: Private key block
+description: Detects PEM-encoded private keys
+severity_default: critical
+category: credential-leak
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+- mcp_manifest
+asamm:
+  primary: AG-03
+  secondary:
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+match_mode: any
+patterns:
+- type: regex
+  value: '-----BEGIN\s+(RSA|DSA|EC|OPENSSH|PGP)?\s*PRIVATE KEY( BLOCK)?-----'
+exclude_patterns: []
+remediation: Store private keys in a secure vault or ~/.ssh with restricted permissions (chmod 600). Never embed in source
+  files.
+examples:
+  true_positive:
+  - '-----BEGIN RSA PRIVATE KEY-----'
+  - '-----BEGIN OPENSSH PRIVATE KEY-----'
+  false_positive:
+  - Look for files that start with the BEGIN header

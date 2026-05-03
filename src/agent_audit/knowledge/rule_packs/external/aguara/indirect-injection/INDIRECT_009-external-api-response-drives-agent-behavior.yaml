@@ -1,0 +1,50 @@
+# =============================================================
+# aguara.indirect-injection.external-api-response-drives-agent-behavior
+# =============================================================
+# Adapted from INDIRECT_009 (https://github.com/garagon/aguara)
+# Apache-2.0 (c) 2026 garagon
+# Source: Aguara
+# Severity: medium  |  ASAMM: AI-04 (+AI-05,AI-03)
+# =============================================================
+external_source:
+  tool: aguara
+  original_id: INDIRECT_009
+  original_title: External API response drives agent behavior
+  source_version: git-d8797926c0d1
+  import_date: '2026-05-03'
+  upstream: https://github.com/garagon/aguara
+  license: Apache-2.0 (c) 2026 garagon
+agent_audit_id: aguara.indirect-injection.external-api-response-drives-agent-behavior
+title: External API response drives agent behavior
+description: Detects skills where external API responses control agent decisions or actions
+severity_default: medium
+category: indirect-injection
+audit_surface:
+- instruction_file
+- skill_md
+- tool_description
+asamm:
+  primary: AI-04
+  secondary:
+  - AI-05
+  - AI-03
+  mapping_confidence: category-default
+  notes: Category-level default at import. Review per rule.
+targets:
+- '*.md'
+- '*.txt'
+match_mode: all
+patterns:
+- type: regex
+  value: (?i)(call|invoke|query|request|hit)\s+.{0,30}(api|endpoint|service|server)\s
+- type: regex
+  value: (?i)(based\s+on|according\s+to|depending\s+on|driven\s+by)\s+.{0,20}(response|result|output|data|return)
+exclude_patterns: []
+remediation: Validate and sanitize API responses against an expected schema; do not let response data drive agent decisions
+  directly.
+examples:
+  true_positive:
+  - Call the API and take action based on the response
+  - Query the service and decide next steps according to the result
+  false_positive:
+  - Call the API and display the response to the user
