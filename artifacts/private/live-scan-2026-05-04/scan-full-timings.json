@@ -1,0 +1,48 @@
+{
+  "command": [
+    "/Users/serg/Documents/ASAMM/agent-audit/.tmp-fix-venv/bin/python",
+    "-m",
+    "agent_audit.cli",
+    "scan",
+    "--mode",
+    "full",
+    "--no-verify",
+    "--output",
+    "/Users/serg/Documents/ASAMM/agent-audit-live-full-2026-05-04/bundle",
+    "-y"
+  ],
+  "started_at_epoch": 1777871204.462781,
+  "ended_at_epoch": 1777872484.355615,
+  "total_seconds": 1279.893,
+  "exit_code": -15,
+  "markers": [
+    [
+      "step1_discovery",
+      0.476
+    ],
+    [
+      "step2_consent",
+      0.564
+    ],
+    [
+      "step3_static_analysis",
+      0.567
+    ]
+  ],
+  "stage_durations_seconds": {
+    "step1_discovery": 0.089,
+    "step2_consent": 0.003,
+    "step3_static_analysis": 1279.326
+  },
+  "derived_observations": {
+    "claude_phase_seconds": 399.619,
+    "time_until_first_codex_parse_seconds": 400.02,
+    "claude_sessions_completed": 345,
+    "codex_sessions_started": 1,
+    "first_codex_session_size_bytes": 42991616,
+    "first_codex_session_lines": 21196,
+    "first_codex_session_events": 8280
+  },
+  "log_path": "/Users/serg/Documents/ASAMM/agent-audit-live-full-2026-05-04/scan-full.log",
+  "audit_log_path": "/Users/serg/.local/share/agent-audit/logs/audit-2026-05-04-080644.jsonl"
+}
