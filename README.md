@@ -23,6 +23,8 @@ agent-safety patterns into something you can run against real repos, local
 agent homes, session traces, skill collections, plugin registries, and MCP
 manifests.
 
+Tested on 500+ repos [Artifacts to Risk: Auditing Instruction Surfaces in Agent Systems](https://zenodo.org/records/20028366) 
+
 ## Author
 
 Sergey Gordeychik  
