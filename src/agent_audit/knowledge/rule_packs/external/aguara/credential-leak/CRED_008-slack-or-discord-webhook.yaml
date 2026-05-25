@@ -40,7 +40,7 @@ exclude_patterns: []
 remediation: Store webhook URLs in environment variables. Regenerate the webhook if it has been committed to version control.
 examples:
   true_positive:
-  - SLACK_WEBHOOK=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
-  - https://discord.com/api/webhooks/123456789/abcdef
+  - SLACK_WEBHOOK=https://hooks.slack.com/services/T<workspace>/B<channel>/<redacted>
+  - https://discord.com/api/webhooks/<id>/<redacted>
   false_positive:
   - Set up Slack webhooks at hooks.slack.com
