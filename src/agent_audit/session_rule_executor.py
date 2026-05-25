@@ -95,6 +95,275 @@ SESSION_SURFACES: Set[str] = {
 
 
 # ----------------------------------------------------------------------------
+# v0.18.1 performance safeguards (Tier 1)
+#
+# Real-world Codex sessions can carry single-event payloads with megabytes
+# of developer_instructions / output_text content. Combined with 78 active
+# session rules and ~1300 regex patterns, scanning such sessions has been
+# observed to wedge for 20+ minutes against a single rollout file.
+#
+# Two complementary defenses below; both can be tuned via env vars without
+# code changes (useful when responding to an incident on a maintainer's
+# machine without shipping a release).
+#
+# 1. Content size cap. Rule patterns are designed to detect short
+#    instruction/command shapes — none legitimately needs to look at more
+#    than ~64KB of contiguous text. Truncating each event's text to a cap
+#    bounds the worst-case per-pattern wall time at O(cap) rather than
+#    O(content). The truncation is logged so downstream knows it
+#    happened and the cap is conservatively above the size at which
+#    legitimate patterns stop matching.
+#
+# 2. Per-event regex budget. Even within the cap, an exotic pattern can
+#    behave superlinearly on adversarial content. We arm SIGALRM around
+#    the per-event regex loop on UNIX (no-op on Windows). On expiry, the
+#    in-flight regex aborts and we move on — better to lose one event's
+#    coverage than the entire scan. The timeout fires once per event,
+#    not per pattern, so a single slow pattern doesn't poison the whole
+#    rule set.
+# ----------------------------------------------------------------------------
+
+# Conservative defaults. These were chosen by profiling real Codex rollouts:
+# 64KB covers >99% of real session events without truncation; 5s per event
+# is enormous compared to the median (~1ms) but small enough that scan
+# completes in finite time even against pathological inputs.
+_DEFAULT_CONTENT_CAP_BYTES = 64 * 1024
+_DEFAULT_PER_EVENT_TIMEOUT_S = 5.0
+
+
+# Resolved once at first use, cached at module level. Re-reading
+# os.environ on every event×rule call costs measurable time on big
+# scans. Tests that need to override should call _refresh_env_cache().
+_env_cache: dict = {}
+
+
+def _refresh_env_cache() -> None:
+    """Re-read environment variables. Tests use this to set the cap
+    or timeout under controlled conditions."""
+    import os
+    global _env_cache
+    _env_cache = {}
+    raw_cap = os.environ.get("AGENT_AUDIT_CONTENT_CAP_BYTES")
+    if raw_cap is None:
+        _env_cache["cap"] = _DEFAULT_CONTENT_CAP_BYTES
+    else:
+        try:
+            _env_cache["cap"] = max(0, int(raw_cap))
+        except ValueError:
+            _env_cache["cap"] = _DEFAULT_CONTENT_CAP_BYTES
+    raw_to = os.environ.get("AGENT_AUDIT_PER_EVENT_TIMEOUT_S")
+    if raw_to is None:
+        _env_cache["timeout"] = _DEFAULT_PER_EVENT_TIMEOUT_S
+    else:
+        try:
+            _env_cache["timeout"] = max(0.0, float(raw_to))
+        except ValueError:
+            _env_cache["timeout"] = _DEFAULT_PER_EVENT_TIMEOUT_S
+
+
+_refresh_env_cache()
+
+
+def _content_cap_bytes() -> int:
+    """Per-event content cap in bytes. Override via AGENT_AUDIT_CONTENT_CAP_BYTES.
+    Set to 0 to disable truncation (NOT recommended — re-introduces stall
+    risk on sessions with megabyte-scale single events)."""
+    return _env_cache.get("cap", _DEFAULT_CONTENT_CAP_BYTES)
+
+
+def _per_event_timeout_s() -> float:
+    """Per-event regex timeout in seconds. Override via
+    AGENT_AUDIT_PER_EVENT_TIMEOUT_S. Set to 0 to disable (NOT recommended).
+    Has effect on UNIX only — on Windows we rely on the content cap alone."""
+    return _env_cache.get("timeout", _DEFAULT_PER_EVENT_TIMEOUT_S)
+
+
+# Tracks how many events we've truncated and how many timed out, summed
+# across all rules in a single scan. The scanner reads these via
+# `consume_safeguard_counters()` and surfaces them as scan errors. Reset
+# at scan boundary by `reset_safeguard_counters()`.
+_safeguard_counters: dict = {"truncated_events": 0, "timed_out_events": 0}
+
+
+def reset_safeguard_counters() -> None:
+    """Called by the scanner before each scan to start counters at zero."""
+    _safeguard_counters["truncated_events"] = 0
+    _safeguard_counters["timed_out_events"] = 0
+
+
+def consume_safeguard_counters() -> dict:
+    """Returns a snapshot of safeguard counters and resets them.
+
+    Caller (scanner) gets one read per scan and converts the numbers
+    into user-facing diagnostics (e.g. errors list entry).
+    """
+    snapshot = dict(_safeguard_counters)
+    reset_safeguard_counters()
+    return snapshot
+
+
+class _RegexBudgetExceeded(Exception):
+    """Raised inside a SIGALRM handler when per-event regex budget hits zero.
+
+    Caught at the per-event boundary so the scan continues with the
+    next event. Never propagated to user code.
+    """
+
+
+def _have_signal_timeout() -> bool:
+    """True iff SIGALRM-based timeouts are usable on this platform."""
+    try:
+        import signal as _signal
+    except ImportError:
+        return False
+    return hasattr(_signal, "SIGALRM") and hasattr(_signal, "setitimer")
+
+
+def _install_session_timeout_handler():
+    """Install SIGALRM handler once for the duration of a session's
+    pattern execution. Returns the previous handler so the caller can
+    restore it.
+
+    The handler is shared across all per-event timeout arms within
+    the session; each event arm/disarms only the timer, not the
+    handler. This avoids ~1M `signal.signal()` calls on big scans.
+    """
+    if not _have_signal_timeout():
+        return None
+    import signal as _signal
+
+    def _handler(signum, frame):
+        raise _RegexBudgetExceeded()
+
+    return _signal.signal(_signal.SIGALRM, _handler)
+
+
+def _restore_session_timeout_handler(prev) -> None:
+    if prev is None or not _have_signal_timeout():
+        return
+    import signal as _signal
+    _signal.setitimer(_signal.ITIMER_REAL, 0)
+    _signal.signal(_signal.SIGALRM, prev)
+
+
+def _arm_event_timer(seconds: float) -> bool:
+    """Arm the per-event itimer. Returns True if armed, False otherwise.
+
+    Handler must already be installed by `_install_session_timeout_handler`.
+    Cheap call — just sets the timer."""
+    if seconds <= 0 or not _have_signal_timeout():
+        return False
+    import signal as _signal
+    _signal.setitimer(_signal.ITIMER_REAL, seconds)
+    return True
+
+
+def _disarm_event_timer(armed: bool) -> None:
+    """Cancel the per-event itimer. Cheap — just sets timer to 0."""
+    if not armed:
+        return
+    import signal as _signal
+    _signal.setitimer(_signal.ITIMER_REAL, 0)
+
+
+def _truncate_for_regex(text: str) -> str:
+    """Apply content cap. Increments the safeguard counter when text was
+    actually truncated."""
+    cap = _content_cap_bytes()
+    if cap <= 0:
+        return text
+    if len(text) > cap:
+        _safeguard_counters["truncated_events"] += 1
+        return text[:cap]
+    return text
+
+
+# ----------------------------------------------------------------------------
+# Tier 2: fast-keyword pre-skip
+#
+# Most rule patterns require at least one literal substring to be present —
+# e.g. a rule about `rm -rf /` cannot match content that doesn't even
+# contain the byte "rm". Extracting these "anchor" substrings at rule load
+# time and substring-checking before regex.search saves hugely on negative
+# events (which are >99% of input on a real scan).
+#
+# We keep the heuristic conservative: only extract anchors that appear at
+# fixed positions in a literal alternation, e.g. `(?:foo|bar|baz)` →
+# {foo, bar, baz}. If ANY of the anchors is in the text, we can run the
+# regex; if NONE are present, the regex couldn't possibly match.
+#
+# Patterns without extractable anchors (e.g. highly dynamic regex like
+# `\d{16}`) skip the pre-filter and fall through to plain regex.search.
+# ----------------------------------------------------------------------------
+
+# Match a `(?:...)` alternation group containing only literal lowercase/digit
+# alternatives separated by `|`. This catches the common case of keyword
+# lists like `(?:rm|cat|curl|wget)` without trying to parse arbitrary regex.
+_ALTERNATION_GROUP_RE = re.compile(r"\(\?:([a-z0-9_\-]+(?:\|[a-z0-9_\-]+)+)\)")
+
+
+def _extract_anchors(pattern_str: str) -> list:
+    """Extract literal anchor substrings that MUST appear in any text the
+    regex could match.
+
+    Returns a list-of-lists: outer list is AND across required positions,
+    inner list is OR across alternatives at that position. The caller
+    requires at least one element of every outer entry to be a substring
+    of the text.
+
+    Empty list means no useful anchors — caller should fall through to
+    regex.search without pre-filtering.
+    """
+    out = []
+    for m in _ALTERNATION_GROUP_RE.finditer(pattern_str):
+        alts = m.group(1).split("|")
+        # Drop very short anchors (1-2 char) to avoid false-positives on
+        # short common substrings. Keep anchors >= 3 chars.
+        good = [a for a in alts if len(a) >= 3]
+        if good and len(good) == len(alts):
+            # Only count this group if ALL alternatives are usefully long;
+            # otherwise the group as a whole isn't a tight anchor.
+            out.append([a.lower() for a in good])
+    return out
+
+
+def _passes_anchor_check(text: str, anchors: list) -> bool:
+    """True if text could potentially match a pattern with these anchors.
+
+    Empty anchors list is True (no pre-filter).
+    For each AND-group of anchors, at least one OR-alternative must be
+    present as a substring (case-insensitive) of text.
+    """
+    if not anchors:
+        return True
+    # Precompute lowercase text once
+    lower = text.lower()
+    for or_group in anchors:
+        if not any(a in lower for a in or_group):
+            return False
+    return True
+
+
+# Per-pattern anchor cache: pattern obj id -> anchors list. Computed
+# lazily on first use, kept for the lifetime of the pattern. WeakKey
+# isn't needed because patterns live alongside the rule pack.
+_anchor_cache: dict = {}
+
+
+def _anchors_for_pattern(compiled_pattern) -> list:
+    """Get cached anchors for a compiled regex (extract from .pattern)."""
+    key = id(compiled_pattern)
+    if key in _anchor_cache:
+        return _anchor_cache[key]
+    try:
+        anchors = _extract_anchors(compiled_pattern.pattern)
+    except Exception:  # noqa: BLE001
+        anchors = []
+    _anchor_cache[key] = anchors
+    return anchors
+
+
+# ----------------------------------------------------------------------------
 # Field extractors — surface name → callable that yields (event, text) pairs
 # ----------------------------------------------------------------------------
 
@@ -193,30 +462,60 @@ class RulePackSessionRule(Rule):
         findings: List[Finding] = []
         seen_event_ids: Set[int] = set()  # one finding per (rule, event)
 
-        for surface in self._applicable_surfaces:
-            for event, text in _events_for_surface(session, surface):
-                # De-dup: a rule can declare multiple surfaces that resolve
-                # to the same event (e.g. session_tool_output AND
-                # session_event_stream both inspect a TOOL_RESULT). Without
-                # this guard we'd emit two findings for one logical hit.
-                event_key = id(event)
-                if event_key in seen_event_ids:
-                    continue
+        # Tier 1 perf safeguards: install SIGALRM handler once for the
+        # whole session pass. Per-event arm/disarm only touches the
+        # itimer, avoiding ~1M signal.signal() syscalls on big scans.
+        timeout_s = _per_event_timeout_s()
+        prev_handler = _install_session_timeout_handler() if timeout_s > 0 else None
 
-                # Exclude gate first: if any exclude pattern matches, skip
-                if any(exc.search(text) for exc in self._pack.exclude_patterns):
-                    continue
+        try:
+            for surface in self._applicable_surfaces:
+                for event, text in _events_for_surface(session, surface):
+                    # De-dup: a rule can declare multiple surfaces that resolve
+                    # to the same event (e.g. session_tool_output AND
+                    # session_event_stream both inspect a TOOL_RESULT). Without
+                    # this guard we'd emit two findings for one logical hit.
+                    event_key = id(event)
+                    if event_key in seen_event_ids:
+                        continue
 
-                m = None
-                for pat in self._pack.patterns:
-                    m = pat.search(text)
-                    if m:
-                        break
-                if m is None:
-                    continue
+                    # Tier 1 perf safeguards (v0.18.1):
+                    # 1. Cap content size before feeding into regex.
+                    # 2. Arm a per-event regex timeout. Catches catastrophic
+                    #    backtracking and superlinear scaling.
+                    text = _truncate_for_regex(text)
+                    armed = _arm_event_timer(timeout_s)
+                    try:
+                        # Exclude gate first: if any exclude pattern matches, skip
+                        if any(exc.search(text) for exc in self._pack.exclude_patterns):
+                            continue
 
-                seen_event_ids.add(event_key)
-                findings.append(self._make_finding(session, event, surface, text, m))
+                        m = None
+                        for pat in self._pack.patterns:
+                            # Tier 2 fast-keyword pre-skip: if the pattern
+                            # has extractable anchor keywords and NONE of
+                            # them appear in the text, skip the regex
+                            # search. Dominant speedup on negative events.
+                            anchors = _anchors_for_pattern(pat)
+                            if anchors and not _passes_anchor_check(text, anchors):
+                                continue
+                            m = pat.search(text)
+                            if m:
+                                break
+                        if m is None:
+                            continue
+
+                        seen_event_ids.add(event_key)
+                        findings.append(self._make_finding(session, event, surface, text, m))
+                    except _RegexBudgetExceeded:
+                        # One pathological event blew our per-event budget.
+                        # Record and continue with the next event.
+                        _safeguard_counters["timed_out_events"] += 1
+                        continue
+                    finally:
+                        _disarm_event_timer(armed)
+        finally:
+            _restore_session_timeout_handler(prev_handler)
 
         return findings
 

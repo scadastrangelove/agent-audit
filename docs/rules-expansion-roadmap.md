@@ -824,7 +824,9 @@ source preserved for traceability.
   `static_findings` kwarg; CLI gains `--scan-project <path>`. 21 tests.
 - □ Phase 3: mixed-evidence clustering. Deferred to v0.19+.
 - □ Phase 4: verifier prompt integration. Deferred to v0.19+.
-- □ v0.18.0 release tag finalization — pending.
+- ✅ v0.18.0 release tag — shipped 2026-05-03.
+- ✅ v0.18.1 real-data hardening patch — shipped 2026-05-04 (perf
+  safeguards + vendor prune + hypothesis audit).
 
 **Summary of the reconciled design** (kept for reference):
 
@@ -1109,31 +1111,155 @@ corpus assembly is the only remaining gate before Phase 1 begins. CI runs
 four reference validators (ATLAS, OWASP MCP, OWASP Agentic, AVID).
 External benchmark baselines: AgentDyn 93.9% recall, WASP 100% recall.
 
-**v0.18 (in progress):**
+**v0.18.0 (released 2026-05-03):**
 - ✅ M2 Phase 1: shared inventory + session-to-repo resolver, no UX (1 day) — *shipped*
 - ✅ M2 Phase 2: 4 named correlators + linker + calibration corpus seed (1 day) — *shipped*
 - ✅ M2 cross-mode CLI subcommand (per D4 — separate subcommand) — *shipped*
 - ✅ Calibration corpus expansion to 20 cases per design §6.1 target — *shipped*
 - ✅ scan-project adapter — static-side findings feed correlators alongside tags — *shipped*
-- □ v0.18.0 release tag finalization — *pending*
+- ✅ v0.18.0 release tag — *shipped*
 - □ M2 Phase 3: mixed-evidence clustering — *deferred to v0.19+*
 - □ M2 Phase 4: verifier prompt integration — *deferred to v0.19+*
 
-Expanded corpus baseline on 20 cases: TPR=11/11=100%, FPR=0/9=0%.
-§6.2 thresholds met (≥95% / ≤2%). Locked as a regression guard via
-`test_calibration_baseline_metrics`. Test count: 672 passing, 1
-skipped. CI runs four reference validators (ATLAS, OWASP MCP,
+Expanded corpus baseline on 20 cases (synthetic): TPR=11/11=100%,
+FPR=0/9=0%. §6.2 thresholds met. Locked as a regression guard via
+`test_calibration_baseline_metrics`. Test count after v0.18.0: 693
+passing, 1 skipped. CI runs four reference validators (ATLAS, OWASP MCP,
 OWASP Agentic, AVID).
 
-**v0.19+ (scope-expansion items, conditional):**
-- A5 (Cisco mcp-scanner with YARA) — needs scope decision on
-  source-code scanning
-- A6 (mcp-audit cross-server) or N2 (native cross-server toxic flow)
-  — pick one
-- A4 (TruffleHog regex extracts) — conditional on counsel call
-- C2 (Semgrep) — paired with A5 scope decision
-- D1, D4, D5, D6 (additional benchmark suites) — driven by paper v2
-  scope
+**v0.18.1 (released 2026-05-04, real-data hardening patch):**
+- ✅ Forensic perf: hung pattern in `ATR-2026-00275` rewritten; Tier 1
+  content cap (default 64KB, env override) + per-event SIGALRM timeout
+  (default 5s); Tier 2 fast-keyword anchor pre-skip — *shipped*
+- ✅ Inventory walker vendor-prune (initial, hardcoded): `_SKIP_DIRS`
+  extended for test fixtures and documentation files — *shipped, then
+  REVERSED in v0.18.3 (over-fitted to agent-audit's own dev tree)*
+- ✅ Hypothesis audit document `docs/v017-v018-hypothesis-audit.md`
+  inventories every v0.17/v0.18 production claim against real-data
+  evidence (8 CONFIRMED, 5 ПФЗ, 4 REFUTED) — *shipped*
+
+**v0.18.3 (released 2026-05-04, follow-up combining v0.18.2 fixes):**
+- ✅ DetectionMode plumbing through `scan()` — `--mode full` CLI value
+  now actually reaches `run_session_rules`/`run_config_rules`.
+  v0.18.1 hypothesis audit had marked this REFUTED-pending — now
+  CONFIRMED-fixed. *shipped*
+- ✅ Vendor-prune defaults reversed — opt-in via `--vendor-prune` flag
+  (off by default) on both `scan` and `cross-mode` subcommands. The
+  v0.18.1 hardcoded skip silently dropped legitimate signal on
+  projects where `benchmarks/` carries product content (e.g.
+  `benchmarks/agent-tasks/AGENTS.md` for an RL training repo).
+  Default behavior now scans everything that isn't unambiguous
+  third-party content. *shipped*
+- ✅ Cross-mode runs by default in `scan()` — reverses v0.18.0 D4
+  decision once cross-mode proved stable. Two-step UX
+  (`scan` then `cross-mode`) created friction without commensurate
+  benefit; integration reuses Phase 1 inventory at zero perf cost.
+  Standalone `cross-mode` subcommand stays for rerun-on-saved-bundle
+  workflows. *shipped*
+- ✅ Verbose progress mode (`-v` / `--verbose` flag) replaces D4
+  "separate subcommand for debugging" rationale — timestamped
+  progress output gives the same observability without the friction.
+  *shipped*
+
+Test count after v0.18.3: 748 passing, 1 skipped. All 4 validators
+green. Combined with v0.18.1 perf gains, agent-audit now: scans
+multi-GB Codex sessions without stalling, reaches all 1300+ rule
+patterns at user-controlled detection mode, and surfaces cross-mode
+correlations alongside main audit output by default.
+
+**v0.19.0 (released 2026-05-04, real-data hardening + eval harness):**
+- ✅ Critical bug fix: `_findings_by_session` reads session_id from
+  evidence array (was on top level only). Pre-fix cross-mode CLI
+  produced 0 aggregates on every real bundle. *shipped*
+- ✅ Diagnostic warning: when cross-mode emits 0 aggregates with
+  findings present, console explains possible causes. Catches
+  recurrence of this class of bug. *shipped*
+- ✅ Autodetect fixture-corpus shape: `_FIXTURE_CASE_DIR_PATTERN` +
+  `_is_fixture_corpus_root()` recognize `benchmarks/c*/case.json`
+  layout and prune that subtree without requiring `--vendor-prune`
+  for the whole repo. *shipped*
+- ✅ Performance: scan-session inventory trust mode. 145× speedup
+  measured on synthetic 200-file repo with 252 lookups. Real-bundle
+  cross-mode time should drop from 277s to ~30-50s. *shipped*
+- ✅ Real-data evaluation harness: `agent-audit eval` subcommand.
+  Runs scan + scan-project + cross-mode end-to-end on a corpus,
+  produces TPR/FPR/perf summary, supports `--baseline` for drift
+  detection and `--ci` for non-zero exit on failure. *shipped*
+- ✅ Incident corpus label refinement: 4 cases got missing
+  expected_findings labels per v0.18.1 hypothesis audit. Benchmark
+  now reports 16/16 passed, precision 1.0, recall 1.0. *shipped*
+- ✅ Benchmark materialization path fix: workspace lives under
+  `$HOME/.cache/agent-audit/` instead of `/tmp/`, eliminating
+  AG-04 ephemeral-filter false-skip on Linux. *shipped*
+
+Test count after v0.19: 800 passing, 1 skipped. All 4 validators
+green. The `eval` subcommand becomes the regression guard for future
+work — every release should produce a comparable artifact.
+
+**v0.20.0 (released 2026-05-04, N2 cross-server toxic flow):**
+- ✅ N2 — native cross-server toxic flow detector. Fires when
+  content from one MCP server's tool result flows into a different
+  MCP server's tool argument carrying injection / secret / destructive
+  markers. Severity escalation by payload class. Same-server and
+  native-tool flows excluded. Per-pair de-dup. *shipped*
+- ✅ 3 incident-corpus cases demonstrating positive (injection,
+  destructive) and negative (benign cross-server) detection. *shipped*
+- ✅ 36 new tests covering server-name extraction, payload
+  classification, content-flow proof, end-to-end detection, dedup,
+  registration. *shipped*
+
+Test count after v0.20.0: 836 passing, 1 skipped. All 4 validators
+green. Eval on incident-corpus: 19 cases, 19 passed, forensic
+precision 1.0, recall 1.0.
+
+**v0.21.0 (released 2026-05-08, A5 Cisco YARA integration):**
+- ✅ Vendored 10 Cisco AI Defense YARA rules at
+  `src/agent_audit/knowledge/rule_packs/external/cisco-mcp-scanner/`
+  (Apache 2.0, attribution preserved). *shipped*
+- ✅ Optional dependency: `pip install agent-audit[yara]`. Base install
+  unchanged; missing yara handled gracefully without crashing.
+  *shipped*
+- ✅ `mcp_yara_scanner` module: parses 4 manifest shapes
+  (mcpServers/tools/prompts/instructions), runs YARA at
+  field-granularity, maps Cisco threat_type → agent-audit severity.
+  *shipped*
+- ✅ scan-project integration: each YARA match becomes a Finding
+  with rule_id `A5.cisco-yara-<rule-name>`, MEDIUM confidence,
+  evidence carrying field path + matched-string snippets. *shipped*
+- ✅ 31 new tests, 3 incident-corpus cases (2 positive, 1 negative).
+  *shipped*
+
+Test count after v0.21.0: 867 passing, 1 skipped. All 4 validators
+green. Eval on incident-corpus: 22 cases, 22 passed end-to-end,
+forensic + static + correlator recall all 1.0.
+
+**v0.22+ (deferred, eval-first cadence):**
+- **A6 vs N2-extended** — data-driven decision after multi-MCP-server
+  bundle eval lands. N2 fired 0 times on the v0.19 live-run bundle
+  (no cross-server activity in that population) — until a bundle
+  with cross-server flows is available, the comparison can't be
+  made on real data.
+- **A4 (TruffleHog regex)** — still gated on AGPL-3.0 vs MIT counsel
+  call. Vendoring AGPL into MIT changes effective project license.
+  No go-ahead until cleared.
+- **C2 (Semgrep)** — descoped further now that A5 covers MCP
+  source-side. Cisco mcp-scanner's YARA stack already covers the
+  high-value patterns Semgrep's MCP-relevant rules would catch. May
+  get re-evaluated as user-instructions ("run semgrep separately")
+  rather than vendored. Re-open if A5 real-bundle eval shows
+  meaningful gaps Semgrep would close.
+- **D1, D4, D5, D6 (additional benchmark suites)** — driven by paper
+  v2 scope. Out of release-cadence list; built on demand.
+- **Per-rule parallelism for giant Codex sessions** (P1 perf). 41MB
+  rollouts still take ~110s after v0.18.1 perf safeguards;
+  ProcessPoolExecutor across rules could halve this. Real-bundle
+  measurement in v0.19 confirmed 18% scan-time improvement from
+  scan-session trust mode, but the giant-session tail remains.
+- **Real-data corpus expansion** — add `expected_static_findings`
+  and `expected_correlators` to existing cases as labeling matures.
+  v0.21 lands the first 3 cases with `expected_static_findings`
+  (the A5 cases). Each future labeled case directly closes a ПФЗ
+  row in the audit doc.
 
 ## Out of Scope
 

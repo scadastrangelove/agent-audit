@@ -1,0 +1,11 @@
+{
+  "id": "a5-mcp-manifest-benign-no-fire-2026-05",
+  "title": "Benign MCP manifest must NOT fire A5 YARA rules",
+  "agent": "claude_code",
+  "description": "False-positive guard for A5. A normal MCP manifest with benign tool descriptions (weather, calendar, file-listing) should produce zero A5 findings. If this case starts firing A5, Cisco's YARA rules have over-generalized or our integration is misclassifying.",
+  "source_type": "synthetic_a5_negative_case",
+  "source_notes": "Locks the FP-guard for A5. Updates to vendored Cisco rules should not start firing on innocent text.",
+  "tags": ["mcp-manifest", "a5", "negative", "false-positive-guard"],
+  "expected_findings": [],
+  "expected_static_findings": []
+}

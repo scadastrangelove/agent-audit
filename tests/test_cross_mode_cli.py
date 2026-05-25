@@ -505,3 +505,81 @@ def test_cross_mode_c4_applies_context_demoted_tag_to_finding_id(runner, tmp_pat
         assert data["aggregate_records"][0]["severity"] == "medium"  # NOT lowered
     finally:
         case.cleanup()
+
+
+# ---------------------------------------------------------------------------
+# v0.18.3 regression — _findings_by_session must read session_id from evidence
+# ---------------------------------------------------------------------------
+
+def test_findings_by_session_reads_session_id_from_evidence():
+    """Real-bundle finding JSON carries session_id inside `evidence`,
+    not at the top level. Pre-v0.18.3 bug: helper only checked
+    f.get("session_id") at top level → all findings ended up under
+    empty-string key → linker never saw them → cross-mode produced 0
+    aggregate records on real bundles even when matching dynamic
+    findings + risk tags both fired.
+
+    Confirmed via maintainer's full-rerun bundle 2026-05-04: 5 of 6
+    risk-tagged sessions had matching dynamic findings (C3.autonomy-with-
+    exfil-chain, AI-06.indirect-prompt-injection-vector, etc.) but
+    cross-mode emitted 0 aggregates.
+    """
+    from agent_audit.cli import _findings_by_session
+
+    # Mirror the saved-bundle shape: top-level session_id absent,
+    # session_id buried in evidence[0]
+    findings = [
+        {
+            "rule_id": "C3.autonomy-with-exfil-chain",
+            "severity": "high",
+            "finding_id": "F00001",
+            "evidence": [
+                {"description": "...", "session_id": "sess-abc123",
+                 "turn_range": [10, 12], "snippet": "..."}
+            ],
+        },
+        {
+            "rule_id": "AG-04.destructive-without-backup",
+            "severity": "high",
+            "finding_id": "F00002",
+            "evidence": [
+                {"description": "...", "session_id": "sess-abc123",
+                 "turn_range": [15, 15], "snippet": "..."}
+            ],
+        },
+        # One config-level finding with no session_id anywhere
+        {
+            "rule_id": "config.something",
+            "severity": "low",
+            "finding_id": "F00003",
+            "evidence": [
+                {"description": "config-level", "source": "/some/path"}
+            ],
+        },
+    ]
+
+    out = _findings_by_session(findings)
+    # Two findings should be grouped under sess-abc123
+    assert "sess-abc123" in out
+    assert len(out["sess-abc123"]) == 2
+    # Config-level under empty string
+    assert len(out.get("", [])) == 1
+
+
+def test_findings_by_session_prefers_top_level_session_id():
+    """If the finding has both top-level session_id AND evidence
+    session_id, top-level wins. Defensive choice — top-level is more
+    explicit and matches what scoring/normalization stages set."""
+    from agent_audit.cli import _findings_by_session
+
+    findings = [
+        {
+            "rule_id": "x.y.z",
+            "severity": "low",
+            "session_id": "top-level-sid",
+            "evidence": [{"session_id": "evidence-sid"}],
+        },
+    ]
+    out = _findings_by_session(findings)
+    assert "top-level-sid" in out
+    assert "evidence-sid" not in out

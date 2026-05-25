@@ -6,6 +6,6 @@
 
 """agent-audit — forensic auditor for local AI coding agents."""
 
-__version__ = "0.18.0"
+__version__ = "0.21.0"
 __author__ = "Sergey Gordeychik"
 __email__ = "scadastrangelove@gmail.com"

@@ -378,4 +378,72 @@ def write_reports(result: ScanResult, output_dir: Path) -> Tuple[Path, Path]:
     json_path = output_dir / f"audit-{stamp}.json"
     md_path.write_text(render_markdown(result), encoding="utf-8")
     json_path.write_text(render_json(result), encoding="utf-8")
+
+    # v0.18.3 — when scan ran cross-mode (default), drop its findings and
+    # report alongside the main audit files. Same JSON shape as the
+    # standalone `cross-mode` subcommand produces, so downstream tooling
+    # parses either path identically.
+    cm = result.cross_mode_report or {}
+    if cm and (cm.get("aggregate_records") or cm.get("tag_applications") or
+               cm.get("sessions_processed", 0) > 0):
+        from .__init__ import __version__
+        cm_json = output_dir / f"cross-mode-{stamp}.json"
+        cm_md = output_dir / f"cross-mode-{stamp}.md"
+        envelope = {
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "package_version": __version__,
+            **cm,
+        }
+        cm_json.write_text(json.dumps(envelope, indent=2, default=str), encoding="utf-8")
+        cm_md.write_text(_render_cross_mode_markdown(cm), encoding="utf-8")
+
     return md_path, json_path
+
+
+def _render_cross_mode_markdown(report: Dict) -> str:
+    """Minimal Markdown render of a cross-mode report. Mirrors the shape
+    produced by cli._render_cross_mode_markdown but kept here because
+    integrating the standalone helper would create an import cycle
+    (cli imports from report)."""
+    lines = []
+    lines.append("# Cross-mode signal flow report")
+    lines.append("")
+    lines.append(f"- Sessions processed: {report.get('sessions_processed', 0)} / {report.get('sessions_total', 0)}")
+    lines.append(f"- Aggregate records: {len(report.get('aggregate_records') or [])}")
+    lines.append(f"- Priority demotions: {len(report.get('tag_applications') or [])}")
+    lines.append(f"- Unlinkable sessions: {len(report.get('sessions_unlinkable') or [])}")
+    lines.append("")
+    aggs = report.get("aggregate_records") or []
+    if aggs:
+        lines.append("## Aggregate records")
+        lines.append("")
+        # Group by correlator
+        by_correlator: Dict[str, list] = {}
+        for r in aggs:
+            by_correlator.setdefault(r.get("correlator", "unknown"), []).append(r)
+        for correlator, recs in sorted(by_correlator.items()):
+            lines.append(f"### `{correlator}` ({len(recs)})")
+            lines.append("")
+            for r in recs[:10]:  # cap for readability
+                lines.append(f"- **{r.get('id')}** ({r.get('severity')}, confidence={r.get('confidence')})")
+                rationale = r.get("rationale") or ""
+                if rationale:
+                    lines.append(f"  - _Rationale_: {rationale}")
+                evid = r.get("evidence") or []
+                if evid:
+                    lines.append(f"  - _Evidence_: {'; '.join(evid[:3])}")
+            if len(recs) > 10:
+                lines.append(f"- _… and {len(recs) - 10} more_")
+            lines.append("")
+    tas = report.get("tag_applications") or []
+    if tas:
+        lines.append("## Tag applications (priority demotions)")
+        lines.append("")
+        for ta in tas[:20]:
+            lines.append(f"- finding `{ta.get('finding_id')}` ({ta.get('rule_id')}) → tag `{ta.get('tag')}`")
+            if ta.get("rationale"):
+                lines.append(f"  - {ta['rationale']}")
+        if len(tas) > 20:
+            lines.append(f"- _… and {len(tas) - 20} more_")
+        lines.append("")
+    return "\n".join(lines)

@@ -292,6 +292,83 @@ def _discover_repos(root: Path) -> List[Path]:
     return [root]
 
 
+def _build_a5_finding(file_path: Path, match) -> "Finding":
+    """Convert an mcp_yara_scanner.YaraMatch into an agent-audit Finding.
+
+    Rule ID format: ``A5.cisco-yara-<rule-name>`` so each Cisco YARA
+    rule shows up as a stable, distinguishable rule_id in scan-project
+    output (no collapsing 10 distinct detectors into one bucket).
+
+    Severity comes from the YaraMatch — already mapped from Cisco
+    threat_type / classification per `_threat_to_severity` in the
+    scanner module. Confidence pinned to MEDIUM: YARA gives us pattern
+    matches, not semantic certainty, and Cisco's pipeline applies
+    LLM-as-judge on top before final severity. We don't have that
+    here, so MEDIUM is honest.
+
+    Evidence carries the field path within the manifest (e.g.
+    ``tools[2].description``) plus up to 3 matched-string snippets so
+    a downstream auditor can locate the exact problem without
+    re-running YARA.
+    """
+    from .rules import Finding, Severity, Confidence, Evidence
+
+    sev_map = {
+        "critical": Severity.CRITICAL,
+        "high": Severity.HIGH,
+        "medium": Severity.MEDIUM,
+        "low": Severity.LOW,
+        "info": Severity.INFO,
+    }
+    severity = sev_map.get(match.severity, Severity.MEDIUM)
+
+    snippets = "; ".join(match.matched_strings[:3]) if match.matched_strings else "(no snippets captured)"
+    title = (
+        f"{match.threat_type or match.rule_name.upper()} pattern in MCP manifest "
+        f"({match.rule_name})"
+    )
+    summary = (
+        f"Cisco mcp-scanner YARA rule `{match.rule_name}` matched in "
+        f"`{file_path.name}` at field `{match.field_path}`. "
+        f"Threat type: {match.threat_type or 'unspecified'}. "
+        f"Classification: {match.classification or 'unspecified'}."
+    )
+    if match.description:
+        summary += f"\n\nRule description: {match.description}"
+
+    return Finding(
+        rule_id=f"A5.cisco-yara-{match.rule_name.replace('_', '-')}",
+        title=title,
+        severity=severity,
+        confidence=Confidence.MEDIUM,
+        summary=summary,
+        evidence=[
+            Evidence(
+                description=(
+                    f"YARA rule {match.rule_name} matched at "
+                    f"{match.field_path} in {file_path.name}"
+                ),
+                source=file_path,
+                snippet=snippets[:500],
+            )
+        ],
+        references=[
+            "ASAMM:AI-04",  # tool poisoning surface
+            "ASAMM:C2",     # credential exfil
+            "owasp_mcp:MCP-Tool-Poisoning",
+            "https://github.com/cisco-ai-defense/mcp-scanner",
+        ],
+        remediation=(
+            "Review the flagged manifest field. MCP tool descriptions and "
+            "names are read by the LLM at tool-selection time — content "
+            "embedded there can override system prompts or instruct "
+            "credential exfiltration. If the manifest is third-party, "
+            "consider replacing with a vetted alternative or stripping "
+            "the offending field."
+        ),
+    )
+
+
 def scan_project(
     path: Path,
     *,
@@ -438,6 +515,31 @@ def scan_project(
                 if not file_has_finding:
                     result.files_with_findings += 1
                     file_has_finding = True
+
+            # A5 (v0.21): YARA scan against MCP manifests using vendored
+            # Cisco mcp-scanner rules. Only fires on files classified as
+            # mcp_manifest. yara-python is OPTIONAL — when not installed
+            # the scanner returns empty results without erroring.
+            #
+            # We import lazily so the cold path stays cheap when the
+            # extra isn't installed.
+            if "mcp_manifest" in surfaces:
+                try:
+                    from .detectors import mcp_yara_scanner
+                    if mcp_yara_scanner.is_available():
+                        yara_result = mcp_yara_scanner.scan_manifest(file_path)
+                        for m in yara_result.matches:
+                            result.findings.append(
+                                _build_a5_finding(file_path, m)
+                            )
+                            if not file_has_finding:
+                                result.files_with_findings += 1
+                                file_has_finding = True
+                except Exception as exc:  # noqa: BLE001
+                    # Don't let YARA failures abort the scan
+                    result.errors.append(
+                        f"A5 YARA scan failed on {file_path}: {exc}"
+                    )
 
     # Post-processing: collapse high-replication findings into aggregates
     if aggregate_collections and result.findings:

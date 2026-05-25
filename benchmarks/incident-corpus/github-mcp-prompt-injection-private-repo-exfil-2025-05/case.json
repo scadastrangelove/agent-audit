@@ -6,7 +6,13 @@
   "source_type": "published_incident",
   "source_url": "https://invariantlabs.ai/blog/mcp-github-vulnerability",
   "source_notes": "Synthetic reproduction models untrusted GitHub content steering the agent into secret exfiltration.",
-  "tags": ["security", "prompt_injection_exfil", "prompt_injection", "secret_exfiltration", "mcp_abuse"],
+  "tags": [
+    "security",
+    "prompt_injection_exfil",
+    "prompt_injection",
+    "secret_exfiltration",
+    "mcp_abuse"
+  ],
   "expected_findings": [
     {
       "rule_id": "AI-06.indirect-prompt-injection-vector",
@@ -15,6 +21,12 @@
     {
       "rule_id": "C2.private-key-exfil",
       "severity": "critical"
+    },
+    {
+      "rule_id": "atr.privilege-escalation.shell-metacharacter-injection-in-tool-arguments",
+      "severity": "critical",
+      "note": "Same pattern as above \u2014 shell metachar injection in tool arguments is a legitimate co-finding for indirect-prompt-injection sessions that lead to exfil."
     }
-  ]
+  ],
+  "v019_label_refinement": true
 }

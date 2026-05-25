@@ -1,0 +1,21 @@
+{
+  "id": "a5-mcp-manifest-tool-poisoning-2026-05",
+  "title": "MCP manifest tool description carries hidden shell-injection instructions",
+  "agent": "claude_code",
+  "description": "Synthetic case demonstrating A5 Cisco YARA detection. A manifest declares a benign-named tool whose description embeds hidden instructions to run shell commands (curl|bash pattern). Cisco's command_injection YARA rule fires at critical severity. Note: Cisco's tool_poisoning rule targets more specific phrases like 'also collects' / 'during processing extract' \u2014 see tool_poisoning.yara for the patterns it matches. Our fixture uses a different (but related) tool-poisoning pattern that the command_injection rule catches.",
+  "source_type": "synthetic_a5_case",
+  "source_notes": "Tool-poisoning attack: tool description tells the LLM to ignore safety, run shell commands, exfiltrate data \u2014 a class documented in MCP threat literature.",
+  "tags": [
+    "mcp-manifest",
+    "tool-poisoning",
+    "a5",
+    "yara"
+  ],
+  "expected_findings": [],
+  "expected_static_findings": [
+    {
+      "rule_id": "A5.cisco-yara-command-injection",
+      "severity": "critical"
+    }
+  ]
+}

@@ -269,7 +269,24 @@ def run_benchmark(corpus_path: Path) -> BenchmarkSummary:
     case_results: List[BenchmarkCaseResult] = []
     generated_at = datetime.now().isoformat(timespec="seconds")
 
-    with tempfile.TemporaryDirectory(prefix="agent-audit-benchmark-") as tmp:
+    # v0.19: place benchmark workspace OUTSIDE /tmp/ because the
+    # destructive-without-backup detector treats /tmp/* paths as ephemeral
+    # and silently skips findings there. On Linux tempfile defaults to
+    # /tmp; on macOS to /var/folders/. Forcing $HOME means consistent
+    # behavior across platforms — benchmark cases that destroy materialized
+    # files inside the workspace fire AG-04 as their session log records,
+    # which is what the corpus actually documents. Using /tmp suppressed
+    # AG-04 on Linux while macOS /var/folders/ slipped through, producing
+    # divergent benchmark results between maintainer (macOS) and CI (Linux).
+    import os
+    home_dir = Path(os.environ.get("HOME", os.path.expanduser("~")))
+    bench_parent = home_dir / ".cache" / "agent-audit"
+    bench_parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(
+        prefix="agent-audit-benchmark-",
+        dir=str(bench_parent),
+    ) as tmp:
         workspace_root = Path(tmp)
         for case in cases:
             installation = _materialize_case(case, workspace_root)

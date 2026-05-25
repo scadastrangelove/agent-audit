@@ -6,7 +6,7 @@
 
 [project]
 name = "agent-audit"
-version = "0.18.0"
+version = "0.21.0"
 description = "Forensic auditor for local AI coding agents (Claude Code, Codex) + project surface scanner with AST-aware native detectors"
 requires-python = ">=3.9"
 authors = [
@@ -23,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 llm = ["anthropic>=0.40"]
+yara = ["yara-python>=4.5"]
 
 [project.scripts]
 agent-audit = "agent_audit.cli:main"
@@ -33,3 +34,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agent_audit"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests that exercise real-data eval paths or other longer-running flows",
+]

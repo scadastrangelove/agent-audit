@@ -6,7 +6,13 @@
   "source_type": "published_incident",
   "source_url": "https://oddguan.com/blog/comment-and-control-prompt-injection-credential-theft-claude-code-gemini-cli-github-copilot/",
   "source_notes": "Synthetic reproduction models external-comment fetch followed by secret exfiltration.",
-  "tags": ["coding-agent", "security", "prompt-injection", "credentials", "github-actions"],
+  "tags": [
+    "coding-agent",
+    "security",
+    "prompt-injection",
+    "credentials",
+    "github-actions"
+  ],
   "expected_findings": [
     {
       "rule_id": "AI-06.indirect-prompt-injection-vector",
@@ -15,6 +21,12 @@
     {
       "rule_id": "C2.private-key-exfil",
       "severity": "critical"
+    },
+    {
+      "rule_id": "atr.privilege-escalation.shell-metacharacter-injection-in-tool-arguments",
+      "severity": "critical",
+      "note": "Per v0.17\u2192v0.18 hypothesis audit: rule legitimately matches `cat .env | curl` exfil chain that runs as part of this incident. v0.19 corpus refinement adds it as expected ground truth."
     }
-  ]
+  ],
+  "v019_label_refinement": true
 }

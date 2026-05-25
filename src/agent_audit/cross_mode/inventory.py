@@ -91,11 +91,40 @@ log = logging.getLogger(__name__)
 # Discovery patterns (mirror project_scanner._classify_file at a coarse level)
 # ----------------------------------------------------------------------------
 
-_SKIP_DIRS = {
+# Always-skipped directories. These are unambiguous third-party / build /
+# cache artifacts that cannot legitimately carry the project's own agent
+# instructions. Walking them is pure overhead and almost always pure noise.
+_ALWAYS_SKIP_DIRS = {
     ".git", "node_modules", "dist", "build", "__pycache__",
     ".venv", "venv", ".tox", ".mypy_cache", ".pytest_cache",
     "target", "out",
 }
+
+# Optional skip — project meta-content directories that COMMONLY contain
+# fixtures or sample data, but on some projects legitimately hold real
+# agent instructions (e.g. agent-rl `benchmarks/agent-tasks/AGENTS.md`,
+# mcp-server-benchmark `benchmarks/scenarios/CLAUDE.md`). Off by default
+# in v0.18.2 to be conservative on completeness; opt in via
+# build_repo_signal_inventory(..., vendor_prune=True) or the CLI's
+# --vendor-prune flag.
+#
+# Background (v0.18.1 → v0.18.2): the v0.18.1 patch added these to the
+# default skip list after a real-data run on the maintainer's machine
+# showed 226/276 sessions firing all 5 risk tags because they resolved
+# to the agent-audit dev checkout containing benchmarks/m2-calibration-
+# corpus/c*/project/AGENTS.md. That fix removed false positives on the
+# specific repo authoring this project, but did so by silently dropping
+# legitimate signal on any other project where benchmarks/ content is
+# real product. v0.18.2 reverts the default — scan everything, opt in
+# to filtering when the user knows their benchmarks/ shape.
+_OPTIONAL_SKIP_DIRS = {
+    "benchmarks", "fixtures", "test_data", "test_fixtures",
+}
+
+# Backwards-compat alias for code paths that imported _SKIP_DIRS directly.
+# Equal to _ALWAYS_SKIP_DIRS — the union with _OPTIONAL_SKIP_DIRS happens
+# only when vendor_prune=True is passed through.
+_SKIP_DIRS = _ALWAYS_SKIP_DIRS
 
 _SKILL_FILENAMES = {"SKILL.md"}
 
@@ -109,6 +138,23 @@ _PLUGIN_DIR_PATTERNS = (
 )
 
 _INSTRUCTION_FILENAMES = {"AGENTS.md", "CLAUDE.md", "AGENT.md"}
+
+# Documentation files at repo root that look markdown-shaped but are about
+# THE PROJECT, not agent instructions. Walking these as instruction surfaces
+# is a false-positive trap on repos that document adversarial patterns
+# (security tooling, MCP frameworks, anything mentioning "approval bypass"
+# or "curl | sh" in prose).
+#
+# Behavior change in v0.18.2: only excluded when vendor_prune=True is passed.
+# Default is to scan README/CHANGELOG/etc. as instruction surfaces — losing
+# real signal on a project whose README documents its own agent contract is
+# worse than the noise on a few security-tooling repos.
+_DOCUMENTATION_FILENAMES = {
+    "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "ROADMAP.md",
+    "SECURITY.md", "LICENSE.md", "CODE_OF_CONDUCT.md",
+    "HISTORY.md", "AUTHORS.md", "MAINTAINERS.md",
+    "TODO.md", "NOTES.md",
+}
 
 
 # ----------------------------------------------------------------------------
@@ -231,19 +277,106 @@ class RepoSignalInventory:
 # Walking + classifying
 # ----------------------------------------------------------------------------
 
-def _walk_repo_files(repo_root: Path) -> Iterable[Path]:
+# v0.19: autodetect fixture-corpus shape.
+#
+# A fixture corpus is a directory whose immediate children (or
+# grandchildren, depending on layout) each contain a marker file like
+# `case.json` documenting the case. Examples:
+#   benchmarks/m2-calibration-corpus/c1-.../case.json
+#   benchmarks/m2-calibration-corpus/c2-.../case.json
+# When a directory matches this shape, its descendants are sample data
+# for tests/benchmarks, NOT the project's own agent surface. Walking
+# them triggers all sorts of false-positive tags (deliberate
+# approval-bypass language, fetch-shell pipes, etc.) — exactly what
+# v0.18.1 over-corrected by hardcoding `benchmarks/` skip.
+#
+# Autodetect is lighter-weight than a global vendor-prune flag: it
+# preserves signal in legitimate `benchmarks/` directories (where
+# `case.json` doesn't exist) and only filters subtrees whose shape
+# proves they hold sample data.
+#
+# Heuristic:
+#   1. Walking into a directory D, peek at D's immediate child dirs.
+#   2. If ≥2 child dirs each contain a `case.json` file directly, and
+#      those child dirs name themselves like fixture cases (regex below
+#      matches names like c1, c1-foo, case-1, test-case-001, etc.),
+#      flag D as a fixture-corpus root.
+#   3. Skip the entire subtree below D.
+#
+# The "≥2 child dirs" guard prevents us flagging a project that just
+# happens to have a single `case.json` somewhere. Two or more is the
+# minimum that makes "this is a corpus, not a one-off" a reasonable
+# inference.
+import re as _re_for_fixture
+_FIXTURE_CASE_DIR_PATTERN = _re_for_fixture.compile(
+    r"^(?:c|case|test|tc)[-_]?\d+(?:[-_].*)?$",
+    _re_for_fixture.IGNORECASE,
+)
+_FIXTURE_CASE_MARKER_FILES = {"case.json"}
+
+
+def _is_fixture_corpus_root(dirpath: str, dirnames: list) -> bool:
+    """True if `dirpath` looks like a fixture-corpus root (e.g.
+    benchmarks/m2-calibration-corpus/).
+
+    Cheap to call: peeks at child dir names without recursing or
+    reading any file content beyond a single os.path.isfile check.
+    """
+    import os as _os
+    matching_kids = 0
+    for child in dirnames:
+        if not _FIXTURE_CASE_DIR_PATTERN.match(child):
+            continue
+        # Does this child have a case-marker file inside it?
+        for marker in _FIXTURE_CASE_MARKER_FILES:
+            marker_path = _os.path.join(dirpath, child, marker)
+            if _os.path.isfile(marker_path):
+                matching_kids += 1
+                break  # one marker is enough for this child
+        if matching_kids >= 2:
+            return True
+    return False
+
+
+def _walk_repo_files(repo_root: Path, *, vendor_prune: bool = False) -> Iterable[Path]:
     """Yield interesting files only — skip vendor / build directories.
 
     Mirrors project_scanner._walk_project_files but we filter aggressively
     to inventory-relevant kinds only. Files outside this filter never
     contribute to tags, so visiting them is pure overhead.
+
+    Args:
+        vendor_prune: when True, additionally skip `_OPTIONAL_SKIP_DIRS`
+            (benchmarks/, fixtures/, test_data/, test_fixtures/). Default
+            False — scan everything that isn't an unambiguous third-party
+            or build artifact.
+
+    v0.19: autodetect fixture-corpus shape regardless of vendor_prune
+    flag. When a directory's children look like {c1/case.json, c2/case.json,
+    ...}, the subtree below it is sample data and gets pruned. This
+    catches agent-audit's own `benchmarks/m2-calibration-corpus/` without
+    requiring vendor_prune=True for the whole repo, and preserves signal
+    in legitimate `benchmarks/agent-tasks/` shapes that don't carry the
+    case.json marker.
     """
+    skip_set = _ALWAYS_SKIP_DIRS | _OPTIONAL_SKIP_DIRS if vendor_prune else _ALWAYS_SKIP_DIRS
     if repo_root.is_file():
         yield repo_root
         return
     for dirpath, dirnames, filenames in _walk(repo_root):
-        # Prune common skip dirs in-place (os.walk supports this)
-        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        # Prune skip dirs in-place (os.walk supports this)
+        dirnames[:] = [d for d in dirnames if d not in skip_set]
+
+        # v0.19 autodetect: drop subtrees whose immediate children look
+        # like a fixture corpus (≥2 directories each containing a
+        # case.json marker).
+        if _is_fixture_corpus_root(dirpath, dirnames):
+            # Don't yield any files in this dir's subtree
+            dirnames[:] = []
+            # Still yield files at THIS level (the corpus parent itself
+            # might have a README that's the project's own surface)
+            # — but skip descending into c1/c2/etc.
+
         for fn in filenames:
             yield Path(dirpath) / fn
 
@@ -254,12 +387,19 @@ def _walk(root: Path):
     yield from os.walk(root)
 
 
-def _classify(path: Path, repo_root: Path) -> Set[str]:
+def _classify(path: Path, repo_root: Path, *, vendor_prune: bool = False) -> Set[str]:
     """Return the set of inventory categories this file belongs to.
 
     Coarser than `project_scanner._classify_file` — we only care which
     inventory bucket this file goes in, not whether each rule pack
     surface applies.
+
+    Args:
+        vendor_prune: when True, exclude `_DOCUMENTATION_FILENAMES` from
+            instruction-surface classification. Default False — README /
+            CHANGELOG / etc. ARE classified as instruction surfaces (the
+            standard interpretation: README of a project IS an instruction
+            surface for many agent harnesses).
     """
     cats: Set[str] = set()
     name = path.name
@@ -284,7 +424,12 @@ def _classify(path: Path, repo_root: Path) -> Set[str]:
     # Avoid scanning every random README — too noisy and not actually agent
     # instructions.
     if name.lower().endswith(".md"):
-        if rel.startswith((".claude/", ".cursor/", ".codex/")) or "/" not in rel:
+        # Documentation filenames are excluded from instruction classification
+        # ONLY when vendor_prune is on. Default behavior: README/CHANGELOG/
+        # etc. ARE instruction surfaces. Many real projects use README.md
+        # as their primary agent contract.
+        is_doc = vendor_prune and name in _DOCUMENTATION_FILENAMES
+        if not is_doc and (rel.startswith((".claude/", ".cursor/", ".codex/")) or "/" not in rel):
             cats.add("instruction")
     return cats
 
@@ -409,13 +554,52 @@ def _fingerprint(repo_root: Path, classified_files: Dict[str, List[Path]]) -> st
 # Process-local cache. Keyed on (resolved_repo_root, fingerprint).
 _CACHE: Dict[Tuple[str, str], RepoSignalInventory] = {}
 
+# v0.19 perf: scan-session trust mode. Within an explicitly-scoped block
+# (entered via `enter_scan_session()` and exited via `exit_scan_session()`)
+# the inventory builder trusts already-built inventories without
+# re-validating the fingerprint. The assumption: filesystem state isn't
+# changing under us during a single scan invocation, so paying for a
+# full walk + classify + fingerprint on every same-repo lookup is wasted.
+#
+# Outside the scan-session context, every call re-validates per the
+# canonical correctness path — fingerprints are recomputed and stale
+# inventories invalidate.
+#
+# On real maintainer's bundle: 252 of 304 sessions resolved to the same
+# repo (`/Users/serg/Documents/ASAMM/agent-audit`). Cross-mode wall time
+# was 277s. With scan-session trust, the first session pays the walk
+# (~5-10s on a big repo); the next 251 sessions hit a path-keyed
+# in-memory dict and return immediately. Expected ~50-100× speedup on
+# this lookup pattern.
+_SCAN_SESSION_TRUSTED: Dict[Tuple[str, bool], "RepoSignalInventory"] = {}
+_SCAN_SESSION_ACTIVE = False
+
+
+def enter_scan_session() -> None:
+    """Begin a scan session — within this block, build_repo_signal_inventory
+    trusts cached inventories per (repo_root, vendor_prune) without
+    re-validating the fingerprint. Caller must `exit_scan_session()` when
+    done so subsequent calls re-validate per the canonical cache rules.
+    """
+    global _SCAN_SESSION_ACTIVE
+    _SCAN_SESSION_ACTIVE = True
+    _SCAN_SESSION_TRUSTED.clear()
+
+
+def exit_scan_session() -> None:
+    """End a scan session — re-enable per-call fingerprint validation."""
+    global _SCAN_SESSION_ACTIVE
+    _SCAN_SESSION_ACTIVE = False
+    _SCAN_SESSION_TRUSTED.clear()
+
 
 def clear_inventory_cache() -> None:
     """Drop the process-local inventory cache.
 
     Useful for tests that build inventories on synthetic repos and want
     a clean slate. Production callers should not need this — the
-    fingerprint catches genuine changes.
+    fingerprint validates freshness automatically. v0.19: also clears
+    the path-keyed fast cache.
     """
     _CACHE.clear()
 
@@ -428,7 +612,11 @@ def _cache_key(repo_root: Path, fingerprint: str) -> Tuple[str, str]:
 # Public entry point
 # ----------------------------------------------------------------------------
 
-def build_repo_signal_inventory(repo_root: Path) -> Optional[RepoSignalInventory]:
+def build_repo_signal_inventory(
+    repo_root: Path,
+    *,
+    vendor_prune: bool = False,
+) -> Optional[RepoSignalInventory]:
     """Build (or fetch from cache) the inventory for a repo.
 
     Returns None if `repo_root` doesn't exist or isn't a directory —
@@ -436,6 +624,14 @@ def build_repo_signal_inventory(repo_root: Path) -> Optional[RepoSignalInventory
     even if it's "empty" (no instruction files at all): the absence
     of all tags is itself useful information for cross-signal
     correlators.
+
+    Args:
+        vendor_prune: when True, additionally filter out test-fixture
+            and documentation surfaces (`benchmarks/`, `fixtures/`,
+            README.md, CHANGELOG.md, etc.). Default False — these
+            ARE scanned because they often hold the project's real
+            agent contract. Opt-in for security-tooling repos and
+            other projects whose meta-content trips up tag derivation.
     """
     try:
         resolved = repo_root.resolve()
@@ -444,19 +640,31 @@ def build_repo_signal_inventory(repo_root: Path) -> Optional[RepoSignalInventory
     if not resolved.exists() or not resolved.is_dir():
         return None
 
+    # v0.19 perf: scan-session trust short-path. Within an explicit
+    # scan-session block, trust prior inventories per (path, vendor_prune)
+    # without re-walking the tree. Outside the block, fall through to
+    # the canonical fingerprint-validated path.
+    if _SCAN_SESSION_ACTIVE:
+        trust_key = (str(resolved), vendor_prune)
+        cached_trusted = _SCAN_SESSION_TRUSTED.get(trust_key)
+        if cached_trusted is not None:
+            return cached_trusted
+
     # Walk + classify
     classified: Dict[str, List[Path]] = {
         "skill": [], "mcp_manifest": [], "plugin_manifest": [], "instruction": [],
     }
-    for path in _walk_repo_files(resolved):
+    for path in _walk_repo_files(resolved, vendor_prune=vendor_prune):
         if not path.is_file():
             continue
-        cats = _classify(path, resolved)
+        cats = _classify(path, resolved, vendor_prune=vendor_prune)
         for cat in cats:
             classified[cat].append(path)
 
+    # Cache key includes vendor_prune so a repo scanned with both flags
+    # gets two distinct entries — they're different views of the same tree.
     fingerprint = _fingerprint(resolved, classified)
-    cache_key = _cache_key(resolved, fingerprint)
+    cache_key = (_cache_key(resolved, fingerprint), vendor_prune)
     cached = _CACHE.get(cache_key)
     if cached is not None:
         return cached
@@ -483,4 +691,6 @@ def build_repo_signal_inventory(repo_root: Path) -> Optional[RepoSignalInventory
         instruction_file_count=len(classified["instruction"]),
     )
     _CACHE[cache_key] = inventory
+    if _SCAN_SESSION_ACTIVE:
+        _SCAN_SESSION_TRUSTED[(str(resolved), vendor_prune)] = inventory
     return inventory

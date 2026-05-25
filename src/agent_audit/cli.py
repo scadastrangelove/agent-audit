@@ -810,6 +810,34 @@ def list_agents(extended: bool) -> None:
     is_flag=True,
     help="Skip consent prompts — use in scripts.",
 )
+@click.option(
+    "--cross-mode/--no-cross-mode", "cross_mode", default=True,
+    help="Run M2 cross-mode signal flow as part of the scan (default: ON). "
+         "Cross-mode links forensic findings to repository structural signals "
+         "via the per-correlator design. Pass --no-cross-mode to skip — "
+         "useful for back-to-back scans against giant rollouts where the "
+         "cross-mode pass adds latency, or when isolating a forensic-only "
+         "regression. v0.18.3 reversed the v0.18.0 D4 separate-subcommand "
+         "default; the standalone `cross-mode` subcommand stays for rerun-on-"
+         "saved-bundle workflows.",
+)
+@click.option(
+    "--vendor-prune", "vendor_prune", is_flag=True, default=False,
+    help="Filter test-fixture and documentation surfaces from the cross-mode "
+         "inventory walk: skip benchmarks/, fixtures/, test_data/, "
+         "test_fixtures/ directories AND README.md / CHANGELOG.md / etc. as "
+         "instruction surfaces. Off by default — README of a project IS "
+         "frequently the agent contract, and benchmarks/ on legitimate "
+         "projects can carry real signal. Turn on for security-tooling repos "
+         "and other projects whose meta-content trips up tag derivation.",
+)
+@click.option(
+    "--verbose", "-v", "verbose", is_flag=True, default=False,
+    help="Emit per-step timestamps in progress output. Useful for "
+         "diagnosing where time is being spent (forensic rules vs "
+         "cross-mode linker vs verify), especially after the v0.18.3 "
+         "merge of cross-mode into the default scan path.",
+)
 @click.pass_context
 def scan_cmd(
     ctx: click.Context,
@@ -824,6 +852,9 @@ def scan_cmd(
     integrity_review: Optional[bool],
     budget: float,
     yes: bool,
+    cross_mode: bool,
+    vendor_prune: bool,
+    verbose: bool,
 ) -> None:
     """Scan discovered agents and produce a report."""
     from .rules import DetectionMode
@@ -896,6 +927,10 @@ def scan_cmd(
         session_limit=limit,
         audit_log=audit_log,
         on_progress=lambda msg: console.print(f"  [dim]{msg}[/dim]"),
+        mode=detection_mode,
+        cross_mode=cross_mode,
+        vendor_prune=vendor_prune,
+        verbose=verbose,
     )
 
     _print_summary(result)
@@ -1319,6 +1354,136 @@ def corpus_lab_cmd(
     if comparison is not None:
         console.print(f"[green]Wrote[/green] {paths['compare']}")
         if not comparison["passed"]:
+            raise SystemExit(1)
+
+
+@main.command("eval")
+@click.option(
+    "--corpus", "-c",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("benchmarks/incident-corpus"),
+    show_default=True,
+    help="Curated incident corpus directory.",
+)
+@click.option(
+    "--output", "-o",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Write eval JSON + Markdown summary to this directory.",
+)
+@click.option(
+    "--baseline",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a prior eval-*.json baseline. When set, the harness "
+         "compares current results against it and exits non-zero on drift.",
+)
+@click.option(
+    "--ci", is_flag=True,
+    help="CI mode: terse output, exit non-zero on any failed case or drift.",
+)
+@click.option(
+    "--yes", "-y", is_flag=True,
+    help="Skip the confirmation prompt.",
+)
+def eval_cmd(
+    corpus: Path,
+    output: Optional[Path],
+    baseline: Optional[Path],
+    ci: bool,
+    yes: bool,
+) -> None:
+    """Run end-to-end real-data eval (scan + scan-project + cross-mode).
+
+    \b
+    Extends `benchmark` with:
+    - scan-project run on each case's project/ subtree
+    - cross-mode aggregate-record scoring
+    - per-stage perf timings
+    - drift detection vs an optional baseline (CI mode)
+
+    \b
+    Each case in the corpus may declare:
+    - expected_findings (existing): forensic-side rules
+    - expected_static_findings: scan-project rules (v0.19+)
+    - expected_correlators: cross-mode aggregates (v0.19+)
+    - expected_runtime_budget_seconds: perf budget (v0.19+)
+
+    \b
+    Cases without v0.19 fields run permissively (no static/correlator
+    expectations). Use this command in CI to catch regressions across
+    release cycles.
+    """
+    from .eval_harness import (
+        detect_drift, evaluate_corpus, write_eval_reports,
+    )
+
+    abs_corpus = corpus.resolve()
+    if not ci:
+        console.print(f"[bold]About to eval:[/bold] {abs_corpus}")
+        if not yes and not Confirm.ask("Proceed?", default=True):
+            console.print("[yellow]Aborted.[/yellow]")
+            return
+
+    progress_cb = None
+    if not ci:
+        progress_cb = lambda msg: console.print(f"[dim]  {msg}[/dim]")
+
+    summary = evaluate_corpus(abs_corpus, on_progress=progress_cb)
+
+    # Console summary
+    if ci:
+        # Terse one-liner per case + final score
+        for cr in summary.case_results:
+            mark = "PASS" if cr.passed else "FAIL"
+            budget = " (OVER BUDGET)" if cr.over_budget else ""
+            console.print(f"{mark} {cr.case_id}{budget}")
+        console.print(
+            f"\nforensic recall={summary.forensic_recall:.4f} "
+            f"static recall={summary.static_recall:.4f} "
+            f"correlator recall={summary.correlator_recall:.4f} "
+            f"wall={summary.total_wall_seconds:.1f}s"
+        )
+    else:
+        table = Table(title="Eval summary")
+        table.add_column("Metric")
+        table.add_column("Value", justify="right")
+        table.add_row("Cases", str(summary.case_count))
+        table.add_row("Passed end-to-end", str(summary.passed_cases))
+        table.add_row("Failed", str(summary.failed_cases))
+        table.add_row("Over budget", str(summary.over_budget_cases))
+        table.add_row("Forensic precision", f"{summary.forensic_precision:.4f}")
+        table.add_row("Forensic recall", f"{summary.forensic_recall:.4f}")
+        table.add_row("Static recall", f"{summary.static_recall:.4f}")
+        table.add_row("Correlator recall", f"{summary.correlator_recall:.4f}")
+        table.add_row("Total wall (s)", f"{summary.total_wall_seconds:.1f}")
+        table.add_row("Median case (s)", f"{summary.median_case_seconds:.2f}")
+        console.print()
+        console.print(table)
+
+    # Drift detection
+    drift_msgs: list = []
+    if baseline:
+        baseline_data = json.loads(baseline.read_text(encoding="utf-8"))
+        drift_msgs = detect_drift(summary, baseline_data)
+        if drift_msgs:
+            console.print()
+            console.print("[bold red]Drift detected:[/bold red]")
+            for msg in drift_msgs:
+                console.print(f"  - {msg}")
+        else:
+            console.print()
+            console.print("[green]No drift detected vs baseline.[/green]")
+
+    if output:
+        json_path, md_path = write_eval_reports(summary, output)
+        console.print()
+        console.print(f"Wrote {json_path}")
+        console.print(f"Wrote {md_path}")
+
+    # Exit code
+    if ci:
+        if summary.failed_cases > 0 or drift_msgs:
             raise SystemExit(1)
 
 
@@ -1907,10 +2072,32 @@ def _load_forensic_bundle(forensic_path: Path) -> dict:
 
 def _findings_by_session(findings: list) -> dict:
     """Group findings by session_id. Findings without a session_id (e.g.
-    config-level) are grouped under empty-string key so callers can ignore."""
+    config-level) are grouped under empty-string key so callers can ignore.
+
+    v0.19 fix: in saved scan JSON, session_id lives INSIDE the evidence
+    array, not at the top level of the finding dict. Pre-fix this helper
+    only checked the top level, so every saved-bundle finding ended up in
+    the empty-string bucket and the linker never saw them. Cross-mode
+    produced 0 aggregate records on real bundles even when matching
+    dynamic findings + risk tags both fired. Discovered during real-data
+    investigation with maintainer's full-rerun bundle 2026-05-04: 5 of 6
+    risk-tagged sessions had matching dynamic findings (C3.autonomy-with-
+    exfil-chain, AI-06.indirect-prompt-injection-vector) but cross-mode
+    emitted 0 aggregates. Direct linker call on the same data produced
+    correct records — bug was specifically in this helper.
+    """
     out: dict = {}
     for f in findings:
+        # First check top-level (in case scoring/normalization put it there)
         sid = f.get("session_id") or ""
+        # Fall back to evidence — this is where the saved JSON actually
+        # carries it (Finding.evidence: List[Evidence], each Evidence has
+        # an optional session_id). Take the first non-empty one.
+        if not sid:
+            for ev in f.get("evidence", []):
+                if isinstance(ev, dict) and ev.get("session_id"):
+                    sid = ev["session_id"]
+                    break
         out.setdefault(sid, []).append(f)
     return out
 
@@ -1920,6 +2107,7 @@ def _build_cross_mode_report(
     *,
     repo_root_override: Optional[Path] = None,
     static_findings_by_repo: Optional[dict] = None,
+    vendor_prune: bool = False,
 ) -> dict:
     """Run cross-mode linker over every session in the saved scan.
 
@@ -1931,6 +2119,10 @@ def _build_cross_mode_report(
             (str) → list of (rule_id, severity, canonical_class) triples
             from a paired `scan-project` run on that repo. The linker
             consults these alongside the inventory tags.
+        vendor_prune: pass through to inventory builder. When True,
+            additionally skip benchmarks/, fixtures/, test_data/,
+            test_fixtures/ directories and README/CHANGELOG/etc.
+            documentation files. Default False — scan everything.
 
     Returns a dict with:
       - aggregate_records: list of aggregate records, one entry per
@@ -1992,7 +2184,7 @@ def _build_cross_mode_report(
             })
             continue
 
-        inv = build_repo_signal_inventory(repo_root)
+        inv = build_repo_signal_inventory(repo_root, vendor_prune=vendor_prune)
         if inv is None:
             unlinkable_reasons.append({
                 "session_id": sid,
@@ -2264,6 +2456,16 @@ def _extract_static_findings_by_repo(
 @click.option(
     "--quiet", is_flag=True, help="Suppress progress output to stdout.",
 )
+@click.option(
+    "--vendor-prune", "vendor_prune", is_flag=True, default=False,
+    help="Filter test-fixture and documentation surfaces from the inventory "
+         "walk: skip benchmarks/, fixtures/, test_data/, test_fixtures/ "
+         "directories AND README.md / CHANGELOG.md / etc. as instruction "
+         "surfaces. Off by default — README of a project IS frequently the "
+         "agent contract, and benchmarks/ on legitimate projects can carry "
+         "real signal. Turn on for security-tooling repos and other "
+         "projects whose meta-content trips up tag derivation.",
+)
 def cross_mode_cmd(
     forensic_path: Path,
     scan_project_path: Optional[Path],
@@ -2271,13 +2473,24 @@ def cross_mode_cmd(
     output_dir: Optional[Path],
     output_format: str,
     quiet: bool,
+    vendor_prune: bool,
 ) -> None:
     """Run cross-mode signal flow over a saved scan report (M2 Phase 2).
 
     \b
-    Per D4: this is a separate subcommand over saved outputs, not
-    auto-invoked inside `scan`. This keeps the execution boundary
-    explicit and makes rollout reversible.
+    USAGE NOTE (v0.18.3+): cross-mode now runs by default as part of
+    `agent-audit scan`. This subcommand stays for the rerun-on-saved-bundle
+    workflow:
+      - Re-run cross-mode against an existing forensic bundle without
+        re-scanning agent home
+      - Pair with --scan-project to add static-side findings post-hoc
+      - Test cross-mode behavior changes (linker tweaks, new correlators)
+        against a stable forensic bundle
+
+    \b
+    For fresh scans, simply run `agent-audit scan` and look for
+    cross-mode-*.json/.md files in the output directory. Use
+    `agent-audit scan --no-cross-mode` to opt out.
 
     \b
     The linker takes findings AS RECORDED in the scan JSON. Per D5,
@@ -2304,6 +2517,11 @@ def cross_mode_cmd(
         console.print(f"[dim]  {n_sessions} session(s), {n_findings} finding(s)[/dim]")
         if repo_root_override:
             console.print(f"[dim]Repo root override: {repo_root_override}[/dim]")
+        if vendor_prune:
+            console.print(
+                f"[dim]Vendor prune: ON (skipping benchmarks/, fixtures/, "
+                f"test_data/, README/CHANGELOG/etc. as instruction surfaces)[/dim]"
+            )
 
     if repo_root_override:
         try:
@@ -2330,6 +2548,7 @@ def cross_mode_cmd(
         raw,
         repo_root_override=repo_root_override,
         static_findings_by_repo=static_findings_by_repo,
+        vendor_prune=vendor_prune,
     )
 
     # Console summary
@@ -2353,6 +2572,34 @@ def cross_mode_cmd(
                 counts[rec["correlator"]] = counts.get(rec["correlator"], 0) + 1
             for correlator, n in sorted(counts.items()):
                 console.print(f"    {correlator}: {n}")
+        else:
+            # v0.19 diagnostic: 0 aggregates on a populated bundle is a
+            # *suspicious* outcome, not necessarily a healthy one. Pre-v0.19
+            # bug in _findings_by_session caused all findings to land under
+            # an empty-string key, so the linker never saw them and we
+            # silently produced 0 aggregates on every real bundle. The
+            # warning below catches a recurrence of that class of bug —
+            # if findings exist and were grouped to specific sessions but
+            # NO aggregates fired, the user should know.
+            n_findings = len(raw.get("findings", []))
+            n_sessions_with_findings = sum(
+                1 for sid in (report.get("inventories") or {})
+                if any(
+                    any(ev.get("session_id") == sid for ev in f.get("evidence", []))
+                    for f in raw.get("findings", [])
+                )
+            )
+            if n_findings > 0 and report["sessions_processed"] > 0:
+                console.print()
+                console.print(
+                    f"  [yellow]Note:[/yellow] {n_findings} forensic finding(s) present, "
+                    f"{report['sessions_processed']} session(s) had inventories built, "
+                    f"but no aggregates fired. Possible explanations: (a) findings "
+                    f"genuinely don't co-occur with risk tags on these sessions, "
+                    f"(b) inventory tag coverage too narrow for this corpus, "
+                    f"(c) bug in finding→session grouping (see v0.18.3 → v0.19 "
+                    f"fix history). Re-run with -v to see per-stage timings."
+                )
 
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)

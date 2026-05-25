@@ -74,7 +74,7 @@ detection:
     description: Direct system prompt inquiry
   - field: user_input
     operator: regex
-    value: (?:ignore\s+(?:all\s+)?(?:previous\s+)?(?:instructions?|guidelines?))?[^\n]{0,80}(?:output|repeat|echo|print|copy)\s+(?:everything|all\s+(?:the\s+)?(?:text|content|instructions?|messages?))\s+(?:above|before|prior|from\s+(?:the\s+)?(?:system|beginning|start))\b
+    value: (?:output|repeat|echo|print|copy)\s+(?:everything|all\s+(?:the\s+)?(?:text|content|instructions?|messages?))\s+(?:above|before|prior|from\s+(?:the\s+)?(?:system|beginning|start))\b
     description: '"Output everything above" — extracts full context window including system prompt'
   - field: user_input
     operator: regex
