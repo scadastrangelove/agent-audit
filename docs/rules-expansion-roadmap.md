@@ -10,13 +10,12 @@ reducing signal bleed.
 
 ## Purpose
 
-This document tracks planned expansion of `agent-audit`'s signature
-sources beyond the three packs currently bundled (ATR, Aguara,
-Cisco PromptGuard) plus the two native detectors. The motivation is
-landscape coverage: the agent-security ecosystem has produced multiple
-new pack sources and taxonomies in 2025–2026, and our `references`
-field plus `finding_dedup.canonical_class_for_rule` mapping should
-reflect that.
+This document tracks signature-source expansion, normalization, and
+calibration work for `agent-audit`. The project now bundles multiple
+imported packs (ATR, Aguara, Cisco PromptGuard, Gitleaks, NOVA) plus
+native detectors, and the remaining work is about keeping those sources
+aligned, calibrated, and mapped into shared taxonomies such as OWASP
+MCP, OWASP Agentic, MITRE ATLAS, and AVID.
 
 This is **not** a wishlist. Each item has:
 - a concrete entry point in the codebase
@@ -41,9 +40,9 @@ strategies differ:
 - **B — Taxonomies and reference catalogs**: not rule sources; they
   populate `references` fields and `finding_dedup.CANONICAL_CLASS_PREFIXES`
   for cross-framework mapping.
-- **C — Alternative rule formats**: NOVA, Semgrep, Gitleaks, TruffleHog.
-  Require format adapters before they fit `RulePackRule`. Some (NOVA)
-  are hybrid pattern+semantic+LLM and need a richer compile target.
+- **C — Alternative rule formats**: Semgrep, TruffleHog, and remaining
+  non-YAML sources that do not yet fit `RulePackRule` directly. NOVA
+  and Gitleaks already ship; Semgrep/TruffleHog remain design-stage.
 - **D — Adversarial benchmarks**: not rule sources; provide labelled
   test cases for measuring our rules' precision/recall.
 
@@ -85,7 +84,7 @@ Items beyond this are scoped further in section "Backlog by Category".
 
 ### A. Direct rule-pack peers
 
-#### A1. Aguara upgrade to current 177-rule pack
+#### A1. Aguara upgrade to current upstream pack
 
 **Status**: ✅ shipped in v0.16.0.
 
@@ -305,7 +304,7 @@ non-overlapping coverage.
 
 #### A5. Cisco mcp-scanner integration (YARA)
 
-**Status**: design, scope expansion.
+**Status**: ✅ shipped in v0.21.0.
 
 **What it is**: Cisco's `mcp-scanner` is a separate pack from
 PromptGuard. It runs YARA-based pattern matching plus LLM-as-a-judge
@@ -317,21 +316,23 @@ source code. Apache-2.0.
 PHP). Today our scope is instruction surfaces (Markdown, JSON, YAML)
 only.
 
-**Why design-stage**: source-code scanning expands `agent-audit`'s
-scope significantly. EDR_BACKLOG already lists "syscall-level events"
-as deferred to v1.0; source-code SAST is a similar boundary question.
-Decision pending: do we ship a `--scan-mcp-source` mode, or stay
-instruction-surface-only and let users compose with `semgrep` and
-Cisco mcp-scanner?
+**What landed**:
+- vendored 10 Cisco AI Defense YARA rules under
+  `src/agent_audit/knowledge/rule_packs/external/cisco-mcp-scanner/`
+- optional `yara-python` dependency exposed as
+  `pip install agent-audit[yara]`
+- `src/agent_audit/detectors/mcp_yara_scanner.py` for manifest parsing
+  and field-granular YARA application
+- `scan-project` integration that emits
+  `A5.cisco-yara-<rule-name>` findings when YARA is available
+- 3 incident-corpus cases and dedicated test coverage for the A5 path
 
-**Entry points** (if approved):
-- YARA rule loader (new) under `knowledge/yara_loader.py` —
-  optional dependency on `yara-python`
-- new audit surface `mcp_server_source` in `_PROJECT_SURFACES`
-- new file walk that respects per-language extensions
-
-**Effort**: 2 weeks if approved. Defer until the scope question is
-decided in a separate doc.
+**Scope decision actually taken**: keep A5 at the MCP manifest /
+tool-definition layer for now. This captures the highest-signal
+instruction-bearing surface without expanding `agent-audit` into a full
+multi-language MCP server source-code SAST. Deeper source-side scanning
+remains future work if real-data validation shows the manifest-layer
+coverage is insufficient.
 
 #### A6. mcp-audit cross-server attack-path rules
 

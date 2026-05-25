@@ -10,11 +10,11 @@ reducing signal bleed.
 
 Forensic auditor for local AI coding agents (Claude Code, Codex CLI, OpenClaw)
 **and** project-surface scanner for repos containing skills, plugins, and MCP
-manifests. Reads session logs, configs, and instruction files, detects
-known-bad patterns using 296 bundled rules in total, including 167
-static-file-applicable rules for `scan-project`, plus native ASAMM detectors,
-produces a report, and optionally cross-verifies findings using any combination
-of installed CLIs, direct API keys, or local LLMs.
+manifests. Reads session logs, configs, and instruction files, applies
+hundreds of bundled signatures from multiple upstream packs plus native
+agent-specific detectors, produces a report, and optionally cross-verifies
+findings using any combination of installed CLIs, direct API keys, or local
+LLMs.
 
 `agent-audit` is one of the implementation projects in the broader
 [ASAMM](https://github.com/scadastrangelove/asamm/) effort. In ASAMM terms,
@@ -105,7 +105,7 @@ agent-audit packs
 
 ## How to use
 
-`agent-audit` has two main operating modes.
+`agent-audit` has three main operating modes.
 
 ### Mode 1: forensic audit of a local agent environment
 
@@ -225,24 +225,41 @@ For research / corpora:
 
 `agent-audit` currently combines:
 
-- **Native ASAMM detectors** for agent-specific structural gaps such as
-  broad external action without approval, autonomous loops with writes, and
-  persistent identity rewrite.
+- **Native detectors** for agent-specific behavioral and structural gaps:
+  unsafe autonomy, confirmation bypass, config poisoning, cross-server toxic
+  flow, persistence, credential exfiltration chains, destructive actions
+  without backup, and related forensic patterns. On the static side,
+  `scan-project` also ships native file detectors such as persistent identity
+  rewrite and broad external action without an approval model.
 - **ATR (Agent Threat Rules)** for prompt injection, agent manipulation,
-  excessive autonomy, skill compromise, tool poisoning, context
-  exfiltration, and related agent-centric attack patterns.
-- **Aguara-derived rules** for external download/install trust-boundary
-  expansion, third-party content ingestion, SSRF-cloud, and related remote
-  input / remote execution surfaces.
-- **Cisco PromptGuard-style rules** for PII harvesting, secret patterns,
+  excessive autonomy, tool poisoning, privilege escalation, model abuse,
+  context exfiltration, and related agent-centric attack patterns.
+- **Aguara-derived rules** for MCP attacks, MCP config hazards, indirect
+  injection, external download/install trust-boundary expansion, third-party
+  content ingestion, credential leaks, supply-chain exfiltration, SSRF-cloud,
+  and related remote-input / remote-execution surfaces.
+- **Cisco PromptGuard-derived rules** for PII harvesting, secret patterns,
   markdown/data-URI exfiltration, and related prompt/output abuse patterns.
+- **Gitleaks-derived rules** for hardcoded secrets and credential material
+  that may appear inside agent-facing instruction surfaces or MCP manifests.
+- **NOVA-derived rules** for prompt-injection and context-exfiltration
+  patterns normalized into the same rule model.
+- **Optional Cisco MCP YARA rules** for MCP manifest and tool-definition
+  scanning. These power `A5.cisco-yara-*` findings when `yara-python` is
+  installed via `pip install agent-audit[yara]`.
 
-The bundled counts are currently:
+As of `v0.21.0`, the normalized imported rule inventory loaded by
+`load_all_rules()` is:
 
-- `233` ATR rules
-- `37` Aguara-derived rules
+- `104` ATR rules
+- `180` Aguara-derived rules
 - `26` Cisco PromptGuard-derived rules
-- native ASAMM detectors and project-specific post-processing on top
+- `217` Gitleaks-derived rules
+- `46` NOVA-derived rules
+
+That is `573` normalized YAML-backed imported rules, plus native detectors,
+cross-mode correlators, collection-scale post-processing, and the optional
+`10` vendored Cisco MCP YARA signatures.
 
 See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for provenance and
 license details.
@@ -286,8 +303,8 @@ Generates ready-to-review config patches, but never applies them.
 
 See [ROADMAP.md](ROADMAP.md) for what's coming.
 See [docs/rules-expansion-roadmap.md](docs/rules-expansion-roadmap.md)
-for planned additions to signature sources (Aguara upgrade, NOVA,
-Gitleaks, OWASP MCP Top 10 mapping, MITRE ATLAS validation).
+for the signature-expansion and validation roadmap, including remaining
+mapping, calibration, and standards-alignment work.
 See [docs/architecture.md](docs/architecture.md) for the technical
 architecture — pipeline stages, module layout, how to add detectors/
 surfaces/rules. Start here if you're picking up the project.

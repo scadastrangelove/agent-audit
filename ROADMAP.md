@@ -21,9 +21,9 @@ This file tracks calibration and detection-quality items discovered via
 grand-runs and lexicon audits. Two adjacent backlogs cover other tracks:
 
 - [`docs/rules-expansion-roadmap.md`](docs/rules-expansion-roadmap.md)
-  — additional signature sources (Aguara upgrade, NOVA, Gitleaks),
-  taxonomy mappings (OWASP MCP Top 10, OWASP Agentic, MITRE ATLAS,
-  AVID), and adversarial benchmark integrations.
+  — signature-source expansion and calibration, taxonomy mappings
+  (OWASP MCP Top 10, OWASP Agentic, MITRE ATLAS, AVID), adversarial
+  benchmark integrations, and remaining source-side backlog items.
 - [`docs/disagreement-audit-implementation-backlog.md`](docs/disagreement-audit-implementation-backlog.md)
   — issue-class refinements driven by adjudication review.
 - [`docs/ast-precision-plan.md`](docs/ast-precision-plan.md) — staged
@@ -31,7 +31,7 @@ grand-runs and lexicon audits. Two adjacent backlogs cover other tracks:
 - [`EDR_BACKLOG.md`](EDR_BACKLOG.md) — items that need runtime
   telemetry beyond JSONL session logs.
 
-## Current backlog (post-v0.14.4)
+## Current backlog
 
 Actionable items discovered via grand-runs and lexicon audits. Each item
 has concrete entry points and rough effort estimate.
