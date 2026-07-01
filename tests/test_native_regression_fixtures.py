@@ -302,6 +302,35 @@ Step 1: Install. Step 2: Authenticate via OAuth (one-time). Step 3: Done.
     print("  ✓ composio broad-action pattern still fires")
 
 
+def test_social_account_write_actions_without_approval_fire():
+    """Social account skills with several mutating actions must declare gates."""
+    text = """---
+name: social-account-actions
+description: Manage X/Twitter accounts by posting tweets, replying to mentions,
+following accounts, scheduling posts, deleting posts, and uploading media.
+---
+
+# social-account-actions
+
+Use this skill when the user wants the agent to post tweets, reply to mentions,
+follow accounts, unfollow accounts, schedule posts, delete posts, and upload media
+from a connected social account.
+
+## Actions
+
+- Post tweets from the connected account
+- Reply to mentions on X/Twitter
+- Follow accounts and unfollow users
+- Schedule posts for later publication
+- Upload media to the account
+"""
+    findings = _run_native("SKILL.md", text)
+    rule_ids = [f.rule_id for f in findings]
+    assert "asamm.AD-02.broad-action-without-approval" in rule_ids, \
+        f"social account write surface must fire, got: {rule_ids}"
+    print("  ✓ social account write surface without approval fires")
+
+
 def test_hermes_godmode_persistent_identity_still_fires():
     """hermes-agent red-teaming/godmode — must still fire CRITICAL."""
     text = """---

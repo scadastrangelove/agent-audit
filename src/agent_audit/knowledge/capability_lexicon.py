@@ -59,6 +59,13 @@ REMOTE_ACTION_SURFACE = [
         r"\b(send emails?|send message|post messages?|post to|create issues?|actually send|perform real actions?)\b",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"\b(?:post|publish|schedule|delete)\s+(?:tweets?|posts?)\b"
+        r"|\breply to\b"
+        r"|\b(?:follow|unfollow|block|mute)\s+(?:accounts?|users?)\b"
+        r"|\bupload media\b",
+        re.IGNORECASE,
+    ),
 ]
 
 SESSION_REUSE = [
@@ -99,6 +106,8 @@ EXTERNAL_REPLY = [
     re.compile(r"\bpost to\b", re.IGNORECASE),
     re.compile(r"\bsend email\b", re.IGNORECASE),
     re.compile(r"\bcomment/thread\b", re.IGNORECASE),
+    re.compile(r"\b(?:post|publish|schedule)\s+(?:tweets?|posts?)\b", re.IGNORECASE),
+    re.compile(r"\breply to\b", re.IGNORECASE),
 ]
 
 MANIFEST_NATIVE_MAPPING = [
