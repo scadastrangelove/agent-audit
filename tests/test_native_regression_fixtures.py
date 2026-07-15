@@ -331,6 +331,23 @@ from a connected social account.
     print("  ✓ social account write surface without approval fires")
 
 
+def test_benign_reply_to_user_does_not_fire_social_action():
+    """Ordinary agent replies are not social-account write surfaces."""
+    text = """---
+name: review-helper
+description: Summarize code review comments and reply to the user with next steps.
+---
+
+# Review Helper
+
+Read pull request comments, group the feedback by topic, and reply to the user
+with a concise plan. Do not post comments, publish posts, or mutate accounts.
+"""
+    findings = _run_native("SKILL.md", text)
+    assert findings == [], f"benign reply instructions should stay silent, got: {[f.rule_id for f in findings]}"
+    print("  ✓ benign reply-to-user instructions stay silent")
+
+
 def test_hermes_godmode_persistent_identity_still_fires():
     """hermes-agent red-teaming/godmode — must still fire CRITICAL."""
     text = """---
@@ -494,6 +511,8 @@ def run_all():
         test_sentence_starter_mcp_does_not_fire,
         test_real_product_names_still_fire_pattern_2,
         test_composio_broad_action_still_fires,
+        test_social_account_write_actions_without_approval_fire,
+        test_benign_reply_to_user_does_not_fire_social_action,
         test_hermes_godmode_persistent_identity_still_fires,
         test_anthropic_skill_no_false_positives,
         test_search_first_research_skill_stays_silent,

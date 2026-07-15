@@ -61,7 +61,7 @@ REMOTE_ACTION_SURFACE = [
     ),
     re.compile(
         r"\b(?:post|publish|schedule|delete)\s+(?:tweets?|posts?)\b"
-        r"|\breply to\b"
+        r"|\breply to\s+(?:mentions?|tweets?|posts?|dms?|messages?|comments?)\b"
         r"|\b(?:follow|unfollow|block|mute)\s+(?:accounts?|users?)\b"
         r"|\bupload media\b",
         re.IGNORECASE,
@@ -107,7 +107,7 @@ EXTERNAL_REPLY = [
     re.compile(r"\bsend email\b", re.IGNORECASE),
     re.compile(r"\bcomment/thread\b", re.IGNORECASE),
     re.compile(r"\b(?:post|publish|schedule)\s+(?:tweets?|posts?)\b", re.IGNORECASE),
-    re.compile(r"\breply to\b", re.IGNORECASE),
+    re.compile(r"\breply to\s+(?:mentions?|tweets?|posts?|dms?|messages?|comments?)\b", re.IGNORECASE),
 ]
 
 MANIFEST_NATIVE_MAPPING = [
