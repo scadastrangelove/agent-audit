@@ -8,6 +8,11 @@ reducing signal bleed.
 
 # Changelog
 
+## Unreleased
+
+- Cache session-rule anchors by regex content and flags, with bounded storage,
+  so collected regex objects cannot leave incorrect anchors for later patterns.
+
 ## 0.21.0 (released 2026-05-08)
 
 Phase 5.2 release: A5 Cisco YARA integration. Second deferred-list
