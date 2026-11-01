@@ -8,6 +8,11 @@ reducing signal bleed.
 
 # Changelog
 
+## Unreleased
+
+- Preserve regex matches when extracting session-rule anchors from alternatives,
+  optional groups, assertions, and Unicode IGNORECASE expressions.
+
 ## 0.21.0 (released 2026-05-08)
 
 Phase 5.2 release: A5 Cisco YARA integration. Second deferred-list
