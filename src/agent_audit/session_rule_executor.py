@@ -344,21 +344,23 @@ def _passes_anchor_check(text: str, anchors: list) -> bool:
     return True
 
 
-# Per-pattern anchor cache: pattern obj id -> anchors list. Computed
-# lazily on first use, kept for the lifetime of the pattern. WeakKey
-# isn't needed because patterns live alongside the rule pack.
+# Cache immutable regex content and flags, not object ids: patterns compiled
+# during rule validation can be collected and their ids reused by other regexes.
+_ANCHOR_CACHE_LIMIT = 4096
 _anchor_cache: dict = {}
 
 
 def _anchors_for_pattern(compiled_pattern) -> list:
-    """Get cached anchors for a compiled regex (extract from .pattern)."""
-    key = id(compiled_pattern)
+    """Get cached anchors for a regex without depending on its object lifetime."""
+    key = (compiled_pattern.pattern, compiled_pattern.flags)
     if key in _anchor_cache:
         return _anchor_cache[key]
     try:
         anchors = _extract_anchors(compiled_pattern.pattern)
     except Exception:  # noqa: BLE001
         anchors = []
+    if len(_anchor_cache) >= _ANCHOR_CACHE_LIMIT:
+        _anchor_cache.pop(next(iter(_anchor_cache)))
     _anchor_cache[key] = anchors
     return anchors
 
