@@ -128,6 +128,13 @@ def _materialize_case(case_dir: Path) -> CalibrationCase:
     project_root = materialized / "project"
     shutil.copytree(src_project, project_root)
 
+    # Fixtures without root-level instructions still represent distinct repos.
+    # Keep resolution inside this project rather than finding an ambient parent
+    # repo (or no repo at all). Preserve any copied Git directory or gitfile.
+    git_marker = project_root / ".git"
+    if not git_marker.exists():
+        git_marker.mkdir()
+
     # Substitute placeholder in the session jsonl
     session_text = src_session.read_text(encoding="utf-8")
     session_text = session_text.replace(_CWD_PLACEHOLDER, str(project_root.resolve()))
