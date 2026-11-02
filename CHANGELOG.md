@@ -8,6 +8,11 @@ reducing signal bleed.
 
 # Changelog
 
+## Unreleased
+
+- Bound materialized M2 calibration projects to their own repository roots so
+  markerless educational cases resolve consistently in cross-mode CLI checks.
+
 ## 0.21.0 (released 2026-05-08)
 
 Phase 5.2 release: A5 Cisco YARA integration. Second deferred-list
