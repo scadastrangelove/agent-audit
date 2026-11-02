@@ -296,35 +296,118 @@ def _truncate_for_regex(text: str) -> str:
 # `\d{16}`) skip the pre-filter and fall through to plain regex.search.
 # ----------------------------------------------------------------------------
 
-# Match a `(?:...)` alternation group containing only literal lowercase/digit
-# alternatives separated by `|`. This catches the common case of keyword
-# lists like `(?:rm|cat|curl|wget)` without trying to parse arbitrary regex.
-_ALTERNATION_GROUP_RE = re.compile(r"\(\?:([a-z0-9_\-]+(?:\|[a-z0-9_\-]+)+)\)")
+# Derive anchors from mandatory regex paths. Unknown or complex syntax must
+# fall through to the bounded matcher rather than suppress a possible match.
+def _extract_anchors(pattern_str: str, flags: int = 0) -> list:
+    if not isinstance(pattern_str, str) or len(pattern_str) > 16384:
+        return []
+    try:
+        try:
+            from re import _parser as parser, _constants as c
+        except ImportError:  # Python 3.9/3.10 compatibility
+            import sre_parse as parser
+            import sre_constants as c
+        budget = [4096]
+
+        def tick(depth):
+            budget[0] -= 1
+            if budget[0] < 0 or depth > 40:
+                raise ValueError("Anchor analysis budget exceeded")
+
+        def word(code):
+            char = chr(code)
+            return char if char.isascii() and (char.isalnum() or char in "_-") else None
+
+        def combine(left, right):
+            if len(left) * len(right) > 64:
+                raise ValueError("Too many literal alternatives")
+            result = {a + b for a in left for b in right}
+            if any(len(v) > 256 for v in result):
+                raise ValueError("Anchor too long")
+            return result
+
+        def literal_options(nodes, depth):
+            options, alternative = {""}, False
+            for op, arg in nodes:
+                tick(depth)
+                if op == c.LITERAL:
+                    value = word(arg)
+                    if value is None:
+                        return None
+                    values, branch = {value}, False
+                elif op == c.SUBPATTERN:
+                    result = literal_options(arg[3], depth + 1)
+                    if result is None:
+                        return None
+                    values, branch = result
+                elif op == c.BRANCH:
+                    values = set()
+                    for part in arg[1]:
+                        result = literal_options(part, depth + 1)
+                        if result is None:
+                            return None
+                        values.update(result[0])
+                    if len(values) > 64:
+                        raise ValueError("Too many branch alternatives")
+                    branch = len(values) > 1
+                elif op == c.IN:
+                    values = set()
+                    for kind, value in arg:
+                        if kind != c.LITERAL or word(value) is None:
+                            return None
+                        values.add(word(value))
+                    branch = len(values) > 1
+                else:
+                    return None
+                options = combine(options, values)
+                alternative = alternative or branch
+            return options, alternative
+
+        repeats = {c.MAX_REPEAT, c.MIN_REPEAT}
+        if hasattr(c, "POSSESSIVE_REPEAT"):
+            repeats.add(c.POSSESSIVE_REPEAT)
+
+        def required(nodes, depth=0):
+            out, chunk, alternative = [], {""}, False
+
+            def flush():
+                nonlocal chunk, alternative
+                if alternative and all(len(v) >= 3 for v in chunk):
+                    out.append(sorted({v.lower() for v in chunk}))
+                chunk, alternative = {""}, False
+
+            for op, arg in nodes:
+                tick(depth)
+                literal = literal_options([(op, arg)], depth + 1)
+                if literal is not None:
+                    chunk = combine(chunk, literal[0])
+                    alternative = alternative or literal[1]
+                    continue
+                flush()
+                if op == c.SUBPATTERN:
+                    out.extend(required(arg[3], depth + 1))
+                elif op in repeats and arg[0] >= 1:
+                    out.extend(required(arg[2], depth + 1))
+                elif op == c.BRANCH:
+                    parts = [required(part, depth + 1) for part in arg[1]]
+                    # Each branch must guarantee an anchor; OR across branches.
+                    if all(parts):
+                        union = sorted({v for groups in parts for v in groups[0]})
+                        if len(union) <= 64:
+                            out.append(union)
+                elif op == getattr(c, "ATOMIC_GROUP", None):
+                    out.extend(required(arg, depth + 1))
+                # Assertions, backreferences and unsupported operations supply
+                # no anchors. Matching still runs with the original safeguards.
+            flush()
+            return out
+
+        return required(parser.parse(pattern_str, flags))
+    except Exception:  # Invalid/unsupported syntax must never suppress matching.
+        return []
 
 
-def _extract_anchors(pattern_str: str) -> list:
-    """Extract literal anchor substrings that MUST appear in any text the
-    regex could match.
-
-    Returns a list-of-lists: outer list is AND across required positions,
-    inner list is OR across alternatives at that position. The caller
-    requires at least one element of every outer entry to be a substring
-    of the text.
-
-    Empty list means no useful anchors — caller should fall through to
-    regex.search without pre-filtering.
-    """
-    out = []
-    for m in _ALTERNATION_GROUP_RE.finditer(pattern_str):
-        alts = m.group(1).split("|")
-        # Drop very short anchors (1-2 char) to avoid false-positives on
-        # short common substrings. Keep anchors >= 3 chars.
-        good = [a for a in alts if len(a) >= 3]
-        if good and len(good) == len(alts):
-            # Only count this group if ALL alternatives are usefully long;
-            # otherwise the group as a whole isn't a tight anchor.
-            out.append([a.lower() for a in good])
-    return out
+_ANCHOR_CASE_FOLD = str.maketrans({"\u0130": "i", "\u0131": "i", "\u017f": "s", "\u212a": "k"})
 
 
 def _passes_anchor_check(text: str, anchors: list) -> bool:
@@ -337,7 +420,7 @@ def _passes_anchor_check(text: str, anchors: list) -> bool:
     if not anchors:
         return True
     # Precompute lowercase text once
-    lower = text.lower()
+    lower = text.lower() if text.isascii() else text.translate(_ANCHOR_CASE_FOLD).lower()
     for or_group in anchors:
         if not any(a in lower for a in or_group):
             return False
@@ -356,7 +439,7 @@ def _anchors_for_pattern(compiled_pattern) -> list:
     if key in _anchor_cache:
         return _anchor_cache[key]
     try:
-        anchors = _extract_anchors(compiled_pattern.pattern)
+        anchors = _extract_anchors(compiled_pattern.pattern, compiled_pattern.flags)
     except Exception:  # noqa: BLE001
         anchors = []
     _anchor_cache[key] = anchors

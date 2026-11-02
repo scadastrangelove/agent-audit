@@ -8,6 +8,13 @@ reducing signal bleed.
 
 # Changelog
 
+## Unreleased
+
+- Preserve regex matches when extracting session-rule anchors from alternatives,
+  optional groups, assertions, and Unicode IGNORECASE expressions.
+- Refine the destructive Slack-to-shell benchmark label for the restored match
+  on the resource rule's existing mass-deletion branch; detector rules are unchanged.
+
 ## 0.21.0 (released 2026-05-08)
 
 Phase 5.2 release: A5 Cisco YARA integration. Second deferred-list
