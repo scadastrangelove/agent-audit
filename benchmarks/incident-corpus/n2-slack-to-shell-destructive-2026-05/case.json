@@ -15,6 +15,11 @@
     {
       "rule_id": "N2.cross-server-toxic-flow",
       "severity": "critical"
+    },
+    {
+      "rule_id": "atr.excessive-autonomy.agent-resource-exhaustion-detection",
+      "severity": "high",
+      "note": "The existing rule explicitly includes mass deletion (rm -rf on an absolute path). Correct anchor extraction restores this previously suppressed match. This follows the same interpretation already documented in ox-flowise-wrapper-bypass; it does not claim measured resource depletion."
     }
   ]
 }
